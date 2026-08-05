@@ -631,24 +631,66 @@ fun InstallmentsChequesScreen(
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        TextButton(onClick = { showDeleteDialog = true }) {
-                                            Text("حذف", color = ExpenseRed)
+                                        OutlinedButton(
+                                            onClick = { showDeleteDialog = true },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(38.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(15.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text(
+                                                "حذف",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
+
                                         if (chk.status == "PASSED" || chk.status == "BOUNCED") {
-                                            Spacer(modifier = Modifier.width(8.dp))
                                             OutlinedButton(
                                                 onClick = { showUnpassDialog = true },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(38.dp),
+                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                                shape = RoundedCornerShape(10.dp),
                                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                                             ) {
-                                                Text("بازگرداندن به پاس نشده", style = MaterialTheme.typography.labelMedium)
+                                                Icon(Icons.Default.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    "بازگرداندن",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
                                             }
                                         }
+
                                         if (chk.status == "PENDING") {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Button(onClick = { chequeToPass = chk }) {
-                                                Text("ثبت پاس شدن چک")
+                                            Button(
+                                                onClick = { chequeToPass = chk },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(38.dp),
+                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                                shape = RoundedCornerShape(10.dp)
+                                            ) {
+                                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    "ثبت پاس شدن",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
                                             }
                                         }
                                     }
@@ -877,32 +919,69 @@ fun InstallmentsChequesScreen(
 
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.End,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            TextButton(onClick = { showDeleteConfirm = true }) {
-                                                Text("حذف", color = ExpenseRed)
+                                            OutlinedButton(
+                                                onClick = { showDeleteConfirm = true },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(38.dp),
+                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
+                                            ) {
+                                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    "حذف",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
                                             }
 
                                             if (debt.paidAmount > 0 || debt.status == "SETTLED") {
-                                                Spacer(modifier = Modifier.width(8.dp))
                                                 OutlinedButton(
                                                     onClick = { showResetConfirm = true },
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .height(38.dp),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                                    shape = RoundedCornerShape(10.dp),
                                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                                                 ) {
-                                                    Text("بازگرداندن به عدم پرداخت", style = MaterialTheme.typography.labelMedium)
+                                                    Icon(Icons.Default.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                    Text(
+                                                        "بازگرداندن",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
                                                 }
                                             }
 
                                             if (debt.status == "PENDING") {
-                                                Spacer(modifier = Modifier.width(8.dp))
                                                 Button(
                                                     onClick = { debtToSettle = debt },
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .height(38.dp),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                                    shape = RoundedCornerShape(10.dp),
                                                     colors = ButtonDefaults.buttonColors(
                                                         containerColor = if (isReceivable) IncomeGreen else MaterialTheme.colorScheme.primary
                                                     )
                                                 ) {
-                                                    Text(if (isReceivable) "ثبت دریافت طلب" else "ثبت پرداخت بدهی")
+                                                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                    Text(
+                                                        if (isReceivable) "ثبت دریافت" else "ثبت پرداخت",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
                                                 }
                                             }
                                         }
@@ -1137,6 +1216,46 @@ fun SelectAccountActionDialog(
     )
 }
 
+data class CalcModeOption(
+    val id: Int,
+    val title: String,
+    val shortDesc: String,
+    val fullDesc: String
+)
+
+val calcModeOptions = listOf(
+    CalcModeOption(
+        id = 0,
+        title = "انتخاب کنید... (عدم انتخاب)",
+        shortDesc = "هنوز روش محاسبه انتخاب نشده است",
+        fullDesc = "لطفاً یکی از روش‌های محاسبه اقساط وام را از لیست زیر انتخاب فرمایید."
+    ),
+    CalcModeOption(
+        id = 1,
+        title = "اقساط مساوی (محاسبه ساده / دستی)",
+        shortDesc = "تقسیم اصل یا بازپرداخت به تعداد ماه‌های مساوی",
+        fullDesc = "در این روش مبلغ کل وام مستقیماً بر تعداد اقساط تقسیم شده و تمامی اقساط ماهانه کاملاً هم‌اندازه خواهند بود."
+    ),
+    CalcModeOption(
+        id = 2,
+        title = "بر اساس درصد سود سالانه (فرمول بانکی)",
+        shortDesc = "محاسبه درصد سود کل و اضافه کردن به اصل وام",
+        fullDesc = "سود کل بر اساس نرخ درصد سالانه و مدت زمان اقساط محاسبه شده و به اصل وام اضافه می‌گردد."
+    ),
+    CalcModeOption(
+        id = 3,
+        title = "کارمزد سالانه (وام قرض‌الحسنه / کارمزدی)",
+        shortDesc = "کسر کارمزد ۴٪ (یا سفارشی) در ابتدای هر سال",
+        fullDesc = "در این روش، کارمزد در اولین قسط هر سال بر اساس مانده اصل وام محاسبه شده و به قسط آن ماه اضافه می‌شود."
+    ),
+    CalcModeOption(
+        id = 4,
+        title = "وام ازدواج (۱۰ ساله - ۴٪ کارمزد سالانه)",
+        shortDesc = "تعداد ۱۲۰ قسط با فرمول و سقف قانونی وام ازدواج",
+        fullDesc = "تنظیمات پیش‌فرض و فرمول دقیق کسر کارمزد طبق قوانین بانکی وام ازدواج در ایران (۱۲۰ ماه)."
+    )
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditInstallmentDialog(
@@ -1147,8 +1266,10 @@ fun AddEditInstallmentDialog(
 ) {
     var title by remember { mutableStateOf(installment?.title ?: "") }
 
-    // Calculation Mode: 1 = Manual/Equal, 2 = Interest %, 3 = Annual Fee / Commission %
-    var calcMode by remember { mutableIntStateOf(1) }
+    // Calculation Mode: 0 = Unselected, 1 = Manual/Equal, 2 = Interest %, 3 = Annual Fee / Commission %, 4 = Marriage Loan
+    var calcMode by remember { mutableIntStateOf(if (installment != null) 1 else 0) }
+    var isDropdownExpanded by remember { mutableStateOf(false) }
+    var showPreviewDialog by remember { mutableStateOf(false) }
 
     // Principal loan input
     var principalValue by remember {
@@ -1294,6 +1415,8 @@ fun AddEditInstallmentDialog(
     val finalMonthlyPaymentInToman = computed.second
     val customItemAmounts = computed.third
 
+    val selectedOption = calcModeOptions.find { it.id == calcMode } ?: calcModeOptions.first()
+
     // Keep monthly payment string updated for non-manual modes
     LaunchedEffect(calcMode, principalInToman, totalCount, interestRateStr, commissionRateStr) {
         if (calcMode == 2 || calcMode == 3 || calcMode == 4) {
@@ -1306,6 +1429,51 @@ fun AddEditInstallmentDialog(
         }
     }
 
+    if (showPreviewDialog) {
+        LoanPreviewDialog(
+            title = title,
+            calcModeOption = selectedOption,
+            principalInToman = principalInToman,
+            totalRepaymentInToman = finalTotalAmountInToman,
+            totalCount = totalCount,
+            paidCount = (paidInstallmentsStr.toIntOrNull() ?: 0).coerceIn(0, totalCount),
+            monthlyPaymentInToman = if (calcMode == 1) {
+                val rawMonthly = CurrencyHelper.parseRawAmount(monthlyPaymentValue.text)
+                if (currencyUnit == CurrencyUnit.RIAL) rawMonthly / 10.0 else rawMonthly
+            } else finalMonthlyPaymentInToman,
+            customItemAmounts = customItemAmounts,
+            startJalaliDate = startJalaliDate,
+            dueDayStr = dueDayStr,
+            note = note,
+            currencyUnit = currencyUnit,
+            onDismiss = { showPreviewDialog = false },
+            onConfirmSave = {
+                showPreviewDialog = false
+                val paidCount = (paidInstallmentsStr.toIntOrNull() ?: 0).coerceIn(0, totalCount)
+                val dueDay = (dueDayStr.toIntOrNull() ?: 1).coerceIn(1, 31)
+
+                val rawMonthly = CurrencyHelper.parseRawAmount(monthlyPaymentValue.text)
+                val monthlyInToman = if (calcMode == 1) {
+                    if (currencyUnit == CurrencyUnit.RIAL) rawMonthly / 10.0 else rawMonthly
+                } else finalMonthlyPaymentInToman
+
+                val newInst = InstallmentEntity(
+                    id = installment?.id ?: 0,
+                    title = title,
+                    totalAmount = finalTotalAmountInToman,
+                    monthlyPayment = monthlyInToman,
+                    totalInstallments = totalCount,
+                    paidInstallments = paidCount,
+                    dueDay = dueDay,
+                    note = note,
+                    status = if (paidCount >= totalCount) "COMPLETED" else "ACTIVE",
+                    startJalaliDate = startJalaliDate
+                )
+                onSave(newInst, customItemAmounts)
+            }
+        )
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (installment == null) "ثبت وام و اقساط جدید" else "ویرایش اطلاعات وام") },
@@ -1316,47 +1484,98 @@ fun AddEditInstallmentDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Calculation Mode Tabs
-                Text("روش محاسبه اقساط:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = calcMode == 1,
-                        onClick = { calcMode = 1 },
-                        shape = SegmentedButtonDefaults.itemShape(0, 4)
-                    ) {
-                        Text("مساوی", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    SegmentedButton(
-                        selected = calcMode == 2,
-                        onClick = { calcMode = 2 },
-                        shape = SegmentedButtonDefaults.itemShape(1, 4)
-                    ) {
-                        Text("درصد سود", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    SegmentedButton(
-                        selected = calcMode == 3,
-                        onClick = { calcMode = 3 },
-                        shape = SegmentedButtonDefaults.itemShape(2, 4)
-                    ) {
-                        Text("کارمزد سالانه", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    SegmentedButton(
-                        selected = calcMode == 4,
-                        onClick = {
-                            calcMode = 4
-                            if (title.isBlank() || title == "وام") {
-                                title = "وام ازدواج"
-                            }
-                            commissionRateStr = "4"
-                            totalInstallmentsStr = "120"
-                            if (principalValue.text.isBlank()) {
-                                val defaultAmt = if (currencyUnit == CurrencyUnit.RIAL) 3000000000L else 300000000L
-                                principalValue = TextFieldValue(CurrencyHelper.formatLiveAmountInput(defaultAmt.toString()))
-                            }
+                // Dropdown for selecting calculation mode
+                ExposedDropdownMenuBox(
+                    expanded = isDropdownExpanded,
+                    onExpandedChange = { isDropdownExpanded = !isDropdownExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedOption.title,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("روش محاسبه اقساط وام") },
+                        supportingText = {
+                            Text(
+                                text = selectedOption.shortDesc,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (calcMode == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                            )
                         },
-                        shape = SegmentedButtonDefaults.itemShape(3, 4)
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = if (calcMode == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = if (calcMode == 0) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = isDropdownExpanded,
+                        onDismissRequest = { isDropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("وام ازدواج", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        calcModeOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                        Text(
+                                            text = option.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (option.id == calcMode) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (option.id == 0) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = option.fullDesc,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    calcMode = option.id
+                                    isDropdownExpanded = false
+                                    if (option.id == 4) {
+                                        if (title.isBlank() || title == "وام") {
+                                            title = "وام ازدواج"
+                                        }
+                                        commissionRateStr = "4"
+                                        totalInstallmentsStr = "120"
+                                        if (principalValue.text.isBlank()) {
+                                            val defaultAmt = if (currencyUnit == CurrencyUnit.RIAL) 3000000000L else 300000000L
+                                            principalValue = TextFieldValue(CurrencyHelper.formatLiveAmountInput(defaultAmt.toString()))
+                                        }
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                            if (option.id < calcModeOptions.last().id) {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+
+                if (calcMode == 0) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            Text(
+                                text = "لطفاً یکی از روش‌های محاسبه اقساط وام را از منوی کشویی بالا انتخاب کنید.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
 
@@ -1498,7 +1717,7 @@ fun AddEditInstallmentDialog(
                             Text("💡 طبق قانون وام ازدواج در ایران، کارمزد ۴٪ سالانه در اولین ماه هر سال (ماه‌های ۱، ۱۳، ۲۵، ۳۷، ۴۹، ۶۱، ۷۳، ۸۵، ۹۷ و ۱۰۹) بر اساس مانده اصل وام کسر می‌گردد.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                } else {
+                } else if (calcMode != 0) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth()
@@ -1611,37 +1830,258 @@ fun AddEditInstallmentDialog(
         },
         confirmButton = {
             Button(
-                onClick = {
-                    val paidCount = (paidInstallmentsStr.toIntOrNull() ?: 0).coerceIn(0, totalCount)
-                    val dueDay = (dueDayStr.toIntOrNull() ?: 1).coerceIn(1, 31)
-
-                    val rawMonthly = CurrencyHelper.parseRawAmount(monthlyPaymentValue.text)
-                    val monthlyInToman = if (calcMode == 1) {
-                        if (currencyUnit == CurrencyUnit.RIAL) rawMonthly / 10.0 else rawMonthly
-                    } else finalMonthlyPaymentInToman
-
-                    val newInst = InstallmentEntity(
-                        id = installment?.id ?: 0,
-                        title = title,
-                        totalAmount = finalTotalAmountInToman,
-                        monthlyPayment = monthlyInToman,
-                        totalInstallments = totalCount,
-                        paidInstallments = paidCount,
-                        dueDay = dueDay,
-                        note = note,
-                        status = if (paidCount >= totalCount) "COMPLETED" else "ACTIVE",
-                        startJalaliDate = startJalaliDate
-                    )
-                    onSave(newInst, customItemAmounts)
-                },
-                enabled = title.isNotBlank() && (principalValue.text.isNotBlank() || monthlyPaymentValue.text.isNotBlank())
+                onClick = { showPreviewDialog = true },
+                enabled = calcMode != 0 && title.isNotBlank() && (principalValue.text.isNotBlank() || monthlyPaymentValue.text.isNotBlank())
             ) {
-                Text("ذخیره")
+                Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("پیش‌نمایش و ثبت وام")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("انصراف")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoanPreviewDialog(
+    title: String,
+    calcModeOption: CalcModeOption,
+    principalInToman: Double,
+    totalRepaymentInToman: Double,
+    totalCount: Int,
+    paidCount: Int,
+    monthlyPaymentInToman: Double,
+    customItemAmounts: List<Double>?,
+    startJalaliDate: String,
+    dueDayStr: String,
+    note: String,
+    currencyUnit: CurrencyUnit,
+    onDismiss: () -> Unit,
+    onConfirmSave: () -> Unit
+) {
+    val totalInterestOrFee = (totalRepaymentInToman - principalInToman).coerceAtLeast(0.0)
+
+    val installmentsSchedule = remember(startJalaliDate, dueDayStr, totalCount, customItemAmounts, monthlyPaymentInToman) {
+        val list = mutableListOf<Triple<Int, String, Double>>()
+        val startJ = JalaliCalendarHelper.parseJalaliDate(startJalaliDate)
+        if (startJ != null && totalCount > 0) {
+            val dueDay = (dueDayStr.toIntOrNull() ?: startJ.day).coerceIn(1, 31)
+            for (i in 0 until totalCount) {
+                val dueDate = JalaliCalendarHelper.calculateInstallmentDueDate(startJ, dueDay, i).toFormattedString()
+                val amt = customItemAmounts?.getOrNull(i) ?: monthlyPaymentInToman
+                list.add(Triple(i + 1, dueDate, amt))
+            }
+        }
+        list
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text("پیش‌نمایش و تأیید نهایی ثبت وام", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Summary Card
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "روش محاسبه: ${calcModeOption.title}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("اصل وام:", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                CurrencyHelper.formatAmount(principalInToman, currencyUnit),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("مجموع سود / کارمزد:", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                CurrencyHelper.formatAmount(totalInterestOrFee, currencyUnit),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("کل مبلغ بازپرداخت:", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                CurrencyHelper.formatAmount(totalRepaymentInToman, currencyUnit),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("تعداد کل اقساط:", style = MaterialTheme.typography.bodySmall)
+                            Text("$totalCount قسط (میانگین قسط: ${CurrencyHelper.formatAmount(monthlyPaymentInToman, currencyUnit)})", style = MaterialTheme.typography.bodySmall)
+                        }
+
+                        if (paidCount > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("اقساط از قبل پرداخت‌شده:", style = MaterialTheme.typography.bodySmall)
+                                Text("$paidCount قسط از $totalCount قسط", style = MaterialTheme.typography.bodySmall, color = IncomeGreen, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        if (note.isNotBlank()) {
+                            Text("توضیحات: $note", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                // Schedule List Header
+                Text(
+                    text = "جدول زمان‌بندی و مبالغ اقساط ($totalCount قسط):",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 240.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .padding(6.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    installmentsSchedule.forEach { (index, dueDate, amount) ->
+                        val isPaid = index <= paidCount
+                        val isSpecialCommissionMonth = customItemAmounts != null && (index - 1) % 12 == 0 && (customItemAmounts.getOrNull(index - 1) ?: 0.0) > monthlyPaymentInToman
+
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isPaid) IncomeGreen.copy(alpha = 0.12f)
+                                else if (isSpecialCommissionMonth) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+                                else MaterialTheme.colorScheme.surface
+                            ),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "قسط $index",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (isPaid) {
+                                        Text(
+                                            text = "(پرداخت‌شده)",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = IncomeGreen,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    } else if (isSpecialCommissionMonth) {
+                                        Text(
+                                            text = "(شامل کارمزد سالانه)",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.tertiary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text(
+                                        text = dueDate,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = CurrencyHelper.formatAmount(amount, currencyUnit),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirmSave,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("تأیید و ثبت نهایی")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("ویرایش اطلاعات")
             }
         }
     )

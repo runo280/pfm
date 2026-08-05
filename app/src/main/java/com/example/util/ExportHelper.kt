@@ -103,12 +103,50 @@ object ExportHelper {
             canvas.drawText(dateStr, 50f, y, paint)
             y += 35f
 
-            // Summary Box
+            // Summary Box Background
+            val netBalance = totalIncome - totalExpense
             val incStr = "جمع درآمدها: ${CurrencyHelper.formatAmount(totalIncome, currencyUnit)}"
             val expStr = "جمع هزینه‌ها: ${CurrencyHelper.formatAmount(totalExpense, currencyUnit)}"
-            canvas.drawText(incStr, 50f, y, headerPaint)
-            canvas.drawText(expStr, 300f, y, headerPaint)
-            y += 40f
+            val diffStr = "تفاضل (مانده): ${CurrencyHelper.formatAmount(netBalance, currencyUnit)}"
+
+            val summaryBgPaint = Paint().apply {
+                color = Color.rgb(243, 244, 246)
+                style = Paint.Style.FILL
+            }
+            val summaryBorderPaint = Paint().apply {
+                color = Color.rgb(229, 231, 235)
+                style = Paint.Style.STROKE
+                strokeWidth = 1f
+            }
+
+            canvas.drawRect(40f, y - 18f, 550f, y + 22f, summaryBgPaint)
+            canvas.drawRect(40f, y - 18f, 550f, y + 22f, summaryBorderPaint)
+
+            val incomePaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(16, 185, 129) // Emerald Green
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+            }
+
+            val expensePaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(239, 68, 68) // Red
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+            }
+
+            val diffPaint = Paint().apply {
+                isAntiAlias = true
+                color = if (netBalance >= 0) Color.rgb(16, 185, 129) else Color.rgb(239, 68, 68)
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+            }
+
+            canvas.drawText(incStr, 50f, y, incomePaint)
+            canvas.drawText(expStr, 220f, y, expensePaint)
+            canvas.drawText(diffStr, 385f, y, diffPaint)
+            y += 45f
 
             // Table Header
             paint.typeface = Typeface.DEFAULT_BOLD
