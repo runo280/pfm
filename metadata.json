@@ -1,0 +1,6 @@
+{
+  "name": "مدیریت مالی و هزینه‌ها",
+  "description": "برنامه هوشمند مدیریت مخارج روزانه، بودجه‌بندی ماهانه، اقساط، چک و حساب‌های بانکی با تاریخ شمسی",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
