@@ -232,10 +232,30 @@ object ExportHelper {
 
             // Document Header
             canvas.drawText("گزارش جامع تراکنش‌های مالی - مدیریت مالی", 550f, y, titlePaint.apply { textAlign = Paint.Align.RIGHT })
-            y += 22f
+            y += 20f
             val dateStr = "تاریخ تنظیم گزارش: ${JalaliCalendarHelper.getCurrentJalaliDate().toReadablePersianString()}"
             canvas.drawText(dateStr, 550f, y, datePaint.apply { textAlign = Paint.Align.RIGHT })
-            y += 30f
+            y += 16f
+
+            val dateRangeStr = if (transactions.isNotEmpty()) {
+                val sortedDates = transactions.mapNotNull { JalaliCalendarHelper.parseJalaliDate(it.jalaliDate) }
+                    .sortedWith(compareBy({ it.year }, { it.month }, { it.day }))
+                if (sortedDates.isNotEmpty()) {
+                    val minD = sortedDates.first().toReadablePersianString()
+                    val maxD = sortedDates.last().toReadablePersianString()
+                    if (minD == maxD) {
+                        "بازه زمانی گزارش: $minD"
+                    } else {
+                        "بازه زمانی گزارش: از $minD تا $maxD"
+                    }
+                } else {
+                    "بازه زمانی گزارش: کلیه تراکنش‌ها"
+                }
+            } else {
+                "بازه زمانی گزارش: بدون تراکنش"
+            }
+            canvas.drawText(dateRangeStr, 550f, y, datePaint.apply { textAlign = Paint.Align.RIGHT })
+            y += 28f
 
             // Summary Box
             val netBalance = totalIncome - totalExpense
@@ -338,10 +358,12 @@ object ExportHelper {
                     checkPageBreak(rowHeight, sectionName, sectionColor)
 
                     // Draw Row Index (RTL at x=550)
-                    canvas.drawText("${index + 1}", 550f, y + 10f, bodyPaintRight)
+                    canvas.drawText(JalaliCalendarHelper.toPersianDigits(index + 1), 550f, y + 10f, bodyPaintRight)
 
-                    // Draw Date (RTL at x=515)
-                    canvas.drawText(tx.jalaliDate, 515f, y + 10f, bodyPaintRight)
+                    // Draw Date with Persian letters (RTL at x=515)
+                    val persianDateStr = JalaliCalendarHelper.parseJalaliDate(tx.jalaliDate)?.toReadablePersianString()
+                        ?: JalaliCalendarHelper.toPersianDigits(tx.jalaliDate)
+                    canvas.drawText(persianDateStr, 515f, y + 10f, bodyPaintRight)
 
                     // Draw Title & Full Description (RTL at x=445)
                     var lineY = y + 10f

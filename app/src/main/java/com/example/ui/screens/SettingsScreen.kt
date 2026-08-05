@@ -226,97 +226,106 @@ fun SettingsScreen(
                                     shape = RoundedCornerShape(14.dp),
                                     color = cardColor.copy(alpha = 0.12f)
                                 ) {
-                                    Row(
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                            .padding(12.dp)
                                     ) {
                                         Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable { accountToEdit = acc }
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Box(
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier
-                                                    .size(36.dp)
-                                                    .clip(CircleShape)
-                                                    .background(cardColor),
-                                                contentAlignment = Alignment.Center
+                                                    .weight(1f)
+                                                    .clickable { accountToEdit = acc }
                                             ) {
-                                                Icon(
-                                                    imageVector = CategoryIconHelper.getIcon(acc.iconName),
-                                                    contentDescription = null,
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(10.dp))
-                                            Column {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Text(
-                                                        text = acc.name,
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        fontWeight = FontWeight.Bold,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(36.dp)
+                                                        .clip(CircleShape)
+                                                        .background(cardColor),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = CategoryIconHelper.getIcon(acc.iconName),
+                                                        contentDescription = null,
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(20.dp)
                                                     )
-                                                    if (acc.isDefault) {
-                                                        Spacer(modifier = Modifier.width(6.dp))
-                                                        Surface(
-                                                            color = MaterialTheme.colorScheme.primaryContainer,
-                                                            shape = RoundedCornerShape(6.dp)
-                                                        ) {
-                                                            Text(
-                                                                text = "پیش‌فرض",
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
+                                                }
+                                                Spacer(modifier = Modifier.width(10.dp))
+                                                Column {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text(
+                                                            text = acc.name,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            fontWeight = FontWeight.Bold,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
+                                                        )
+                                                        if (acc.isDefault) {
+                                                            Spacer(modifier = Modifier.width(6.dp))
+                                                            Surface(
+                                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                                shape = RoundedCornerShape(6.dp)
+                                                            ) {
+                                                                Text(
+                                                                    text = "پیش‌فرض",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
-                                                if (acc.accountNumber.isNotBlank()) {
-                                                    Text(
-                                                        text = JalaliCalendarHelper.toPersianDigits(acc.accountNumber),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = Color.Gray,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
+                                            }
+
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = CurrencyHelper.formatAmount(acc.balance, currencyUnit),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+
+                                                IconButton(onClick = { onSetDefaultAccount(acc.id) }) {
+                                                    Icon(
+                                                        imageVector = if (acc.isDefault) Icons.Default.Star else Icons.Default.StarBorder,
+                                                        contentDescription = "پیش‌فرض",
+                                                        tint = if (acc.isDefault) Color(0xFFFFB703) else Color.Gray,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+
+                                                IconButton(onClick = { showDeleteAccountDialog = true }) {
+                                                    Icon(
+                                                        Icons.Default.Delete,
+                                                        contentDescription = "حذف",
+                                                        tint = ExpenseRed,
+                                                        modifier = Modifier.size(20.dp)
                                                     )
                                                 }
                                             }
                                         }
 
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (acc.accountNumber.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                            Spacer(modifier = Modifier.height(4.dp))
                                             Text(
-                                                text = CurrencyHelper.formatAmount(acc.balance, currencyUnit),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
+                                                text = "توضیحات / شماره کارت: ${JalaliCalendarHelper.toPersianDigits(acc.accountNumber)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Visible,
+                                                modifier = Modifier.fillMaxWidth()
                                             )
-
-                                            IconButton(onClick = { onSetDefaultAccount(acc.id) }) {
-                                                Icon(
-                                                    imageVector = if (acc.isDefault) Icons.Default.Star else Icons.Default.StarBorder,
-                                                    contentDescription = "پیش‌فرض",
-                                                    tint = if (acc.isDefault) Color(0xFFFFB703) else Color.Gray,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            }
-
-                                            IconButton(onClick = { showDeleteAccountDialog = true }) {
-                                                Icon(
-                                                    Icons.Default.Delete,
-                                                    contentDescription = "حذف",
-                                                    tint = ExpenseRed,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            }
                                         }
                                     }
                                 }

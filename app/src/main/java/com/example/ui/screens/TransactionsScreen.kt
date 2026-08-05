@@ -35,6 +35,7 @@ import com.example.ui.components.AccountHorizontalSelector
 import com.example.ui.components.CategoryHorizontalSelector
 import com.example.ui.components.CategoryTwoLevelSelector
 import com.example.ui.components.JalaliDatePickerDialog
+import com.example.ui.components.InlineJalaliDatePicker
 import com.example.ui.theme.*
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
@@ -1024,48 +1025,21 @@ fun AddEditTransactionDialog(
                     )
                 }
 
-                // Date & Note Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(
-                            value = JalaliCalendarHelper.toPersianDigits(jalaliDateStr),
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("تاریخ") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Event, contentDescription = null, modifier = Modifier.size(18.dp))
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledBorderColor = MaterialTheme.colorScheme.outline,
-                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            enabled = false
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable { showDatePicker = true }
-                        )
-                    }
+                // Inline Date Selector Row (no dialog required)
+                InlineJalaliDatePicker(
+                    dateStr = jalaliDateStr,
+                    onDateChanged = { jalaliDateStr = it }
+                )
 
-                    OutlinedTextField(
-                        value = note,
-                        onValueChange = { note = it },
-                        label = { Text("توضیحات (اختیاری)") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
+                // Transaction Note in dedicated separate row
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("توضیحات (اختیاری)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
             }
         },
         confirmButton = {

@@ -81,6 +81,7 @@ fun InstallmentsChequesScreen(
     var installmentToEdit by remember { mutableStateOf<InstallmentEntity?>(null) }
     var installmentToPay by remember { mutableStateOf<InstallmentEntity?>(null) }
     var installmentForDetails by remember { mutableStateOf<InstallmentEntity?>(null) }
+    var installmentForFullInfo by remember { mutableStateOf<InstallmentEntity?>(null) }
 
     var showAddChequeDialog by remember { mutableStateOf(false) }
     var chequeToEdit by remember { mutableStateOf<ChequeEntity?>(null) }
@@ -206,7 +207,7 @@ fun InstallmentsChequesScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { installmentToEdit = inst },
+                                    .clickable { installmentForFullInfo = inst },
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                             ) {
@@ -235,11 +236,12 @@ fun InstallmentsChequesScreen(
                                         }
 
                                         Row {
-                                            IconButton(onClick = { installmentToEdit = inst }) {
-                                                Icon(Icons.Default.Edit, contentDescription = "ویرایش مشخصات اصلی وام", tint = MaterialTheme.colorScheme.primary)
-                                            }
-                                            IconButton(onClick = { showDeleteDialog = true }) {
-                                                Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color.Gray)
+                                            IconButton(onClick = { installmentForFullInfo = inst }) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Info,
+                                                    contentDescription = "مشاهده اطلاعات و جزئیات کامل وام",
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
                                             }
                                         }
                                     }
@@ -1080,6 +1082,15 @@ fun InstallmentsChequesScreen(
             onUnpaySpecificInstallmentItem = { inst, item ->
                 onUnpaySpecificInstallmentItem?.invoke(inst, item)
             }
+        )
+    }
+
+    if (installmentForFullInfo != null) {
+        FullLoanDetailsDialog(
+            installment = installmentForFullInfo!!,
+            accounts = accounts,
+            currencyUnit = currencyUnit,
+            onDismiss = { installmentForFullInfo = null }
         )
     }
 
@@ -3318,5 +3329,183 @@ fun DebtDonutChart(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun FullLoanDetailsDialog(
+    installment: InstallmentEntity,
+    accounts: List<AccountEntity>,
+    currencyUnit: CurrencyUnit,
+    onDismiss: () -> Unit
+) {
+    val linkedAccountName = accounts.find { it.id == installment.accountId }?.name ?: "تعیین نشده"
+    val totalPaidAmount = installment.paidInstallments * installment.monthlyPayment
+    val remainingAmount = (installment.totalAmount - totalPaidAmount).coerceAtLeast(0.0)
+    val remainingInstallments = (installment.totalInstallments - installment.paidInstallments).coerceAtLeast(0)
+    val progressPct = if (installment.totalInstallments > 0) {
+        ((installment.paidInstallments.toDouble() / installment.totalInstallments) * 100).toInt()
+    } else 0
+
+    val today = JalaliCalendarHelper.getCurrentJalaliDate()
+    val nextDueDate = JalaliCalendarHelper.getInstallmentNextDueDate(installment, today)
+    val remainingDaysMsg = JalaliCalendarHelper.getDaysRemainingMessage(nextDueDate, today)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Payments,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        },
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "اطلاعات و جزئیات کامل وام",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = if (installment.status == "COMPLETED") IncomeGreenContainer else MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = if (installment.status == "COMPLETED") "تسویه‌شده و تکمیل" else "فعال (در حال پرداخت)",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (installment.status == "COMPLETED") IncomeGreen else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Section 1: Base info
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("عنوان وام: ${installment.title}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        HorizontalDivider()
+                        LoanDetailItemRow("تاریخ شروع وام:", if (installment.startJalaliDate.isNotBlank()) JalaliCalendarHelper.toPersianDigits(installment.startJalaliDate) else "ثبت نشده")
+                        LoanDetailItemRow("حساب متصل جهت پرداخت:", linkedAccountName)
+                        LoanDetailItemRow("روز سررسید ماهانه:", "روز ${JalaliCalendarHelper.toPersianDigits(installment.dueDay)} هر ماه")
+                        LoanDetailItemRow("زمان یادآوری:", "${JalaliCalendarHelper.toPersianDigits(installment.reminderDaysBefore)} روز قبل از سررسید")
+                    }
+                }
+
+                // Section 2: Financial Summary
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("خلاصه وضعیت مالی", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        HorizontalDivider()
+                        LoanDetailItemRow("مبلغ کل وام:", CurrencyHelper.formatAmount(installment.totalAmount, currencyUnit), isBold = true)
+                        LoanDetailItemRow("مبلغ هر قسط:", CurrencyHelper.formatAmount(installment.monthlyPayment, currencyUnit))
+                        LoanDetailItemRow("مجموع پرداخت شده:", CurrencyHelper.formatAmount(totalPaidAmount, currencyUnit), color = IncomeGreen)
+                        LoanDetailItemRow("مبلغ باقی‌مانده از کل وام:", CurrencyHelper.formatAmount(remainingAmount, currencyUnit), color = ExpenseRed)
+                    }
+                }
+
+                // Section 3: Installments Progress
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("وضعیت اقساط و پیشرفت", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        HorizontalDivider()
+                        LoanDetailItemRow("تعداد کل اقساط:", "${JalaliCalendarHelper.toPersianDigits(installment.totalInstallments)} قسط")
+                        LoanDetailItemRow("اقساط پرداخت شده:", "${JalaliCalendarHelper.toPersianDigits(installment.paidInstallments)} قسط")
+                        LoanDetailItemRow("اقساط باقی‌مانده:", "${JalaliCalendarHelper.toPersianDigits(remainingInstallments)} قسط")
+                        LoanDetailItemRow("درصد پیشرفت پرداخت:", "${JalaliCalendarHelper.toPersianDigits(progressPct)}٪")
+                        if (installment.status != "COMPLETED") {
+                            LoanDetailItemRow("تاریخ قسط بعدی:", nextDueDate.toReadablePersianString())
+                            LoanDetailItemRow("وضعیت سررسید:", remainingDaysMsg)
+                        }
+                    }
+                }
+
+                // Section 4: Notes
+                if (installment.note.isNotBlank()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text("یادداشت و توضیحات:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                            Text(installment.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("بستن")
+            }
+        }
+    )
+}
+
+@Composable
+private fun LoanDetailItemRow(
+    label: String,
+    value: String,
+    isBold: Boolean = false,
+    color: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (isBold) FontWeight.Bold else FontWeight.SemiBold,
+            color = color
+        )
     }
 }
