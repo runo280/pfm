@@ -344,39 +344,65 @@ fun InstallmentsChequesScreen(
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         OutlinedButton(
                                             onClick = { installmentForDetails = inst },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(12.dp)
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(38.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                            shape = RoundedCornerShape(10.dp)
                                         ) {
-                                            Icon(Icons.Default.FormatListNumbered, contentDescription = null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("ریز اقساط", style = MaterialTheme.typography.labelMedium)
+                                            Icon(Icons.Default.FormatListNumbered, contentDescription = null, modifier = Modifier.size(15.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text(
+                                                "ریز اقساط",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
 
                                         if (inst.paidInstallments > 0) {
                                             OutlinedButton(
                                                 onClick = { onUnpayInstallment?.invoke(inst) },
-                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(38.dp),
+                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                                shape = RoundedCornerShape(10.dp),
                                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
                                             ) {
-                                                Icon(Icons.Default.Undo, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                Spacer(modifier = Modifier.width(2.dp))
-                                                Text("لغو پرداخت", style = MaterialTheme.typography.labelSmall)
+                                                Icon(Icons.Default.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    "لغو پرداخت",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
                                             }
                                         }
 
                                         if (inst.status == "ACTIVE" && inst.paidInstallments < inst.totalInstallments) {
                                             Button(
                                                 onClick = { installmentToPay = inst },
-                                                modifier = Modifier.weight(1f),
-                                                shape = RoundedCornerShape(12.dp)
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(38.dp),
+                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                                shape = RoundedCornerShape(10.dp)
                                             ) {
-                                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("پرداخت بعدی", style = MaterialTheme.typography.labelMedium)
+                                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    "پرداخت بعدی",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
                                             }
                                         }
                                     }
