@@ -73,8 +73,7 @@ jobs:
 
           CHANGES="• $COMMIT_TITLE"
           if [ -n "$COMMIT_BODY" ]; then
-            CHANGES="$CHANGES
-$COMMIT_BODY"
+            CHANGES=$(printf "%s\n%s" "$CHANGES" "$COMMIT_BODY")
           fi
 
           CAPTION=$(printf "🚀 *نسخه جدید برنامه آماده شد (arm64-v8a)*\n\n📱 *برنامه:* حسابداری شخصی\n🏗 *معماری:* ARM64 (بهینه‌شده و کم‌حجم)\n👤 *توسعه‌دهنده:* %s\n🔖 *کامیت:* \`%s\`\n\n📝 *لیست تغییرات:*\n%s" "$COMMIT_AUTHOR" "$COMMIT_HASH" "$CHANGES")
