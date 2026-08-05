@@ -24,15 +24,18 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Generate Dummy Release Keystore
+      - name: Verify Release Keystore
         run: |
-          if [ ! -f "@ndroid.jks" ]; then
-            echo "Creating a temporary keystore for Release build..."
-            keytool -genkey -v -keystore my-upload-key.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -storepass "android" -keypass "android" -dname "CN=Release, OU=Android, O=App, L=City, ST=State, C=US"
+          if [ -f "@ndroid.jks" ]; then
+            echo "Found @ndroid.jks keystore in repository."
+          else
+            echo "Warning: @ndroid.jks not found, creating fallback keystore..."
+            keytool -genkey -v -keystore @ndroid.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -storepass "${{ secrets.KEY_PASS || 'android' }}" -keypass "${{ secrets.KEY_PASS || 'android' }}" -dname "CN=Release, OU=Android, O=App, L=City, ST=State, C=US"
           fi
 
       - name: Build Release APK (arm64-v8a)
         env:
+          KEYSTORE_PATH: ${{ github.workspace }}/@ndroid.jks
           STORE_PASSWORD: ${{ secrets.KEY_PASS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASS }}
         run: gradle assembleRelease --stacktrace

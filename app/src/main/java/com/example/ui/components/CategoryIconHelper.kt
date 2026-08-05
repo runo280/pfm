@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -17,7 +18,7 @@ object CategoryIconHelper {
         "Payments" to Icons.Default.Payments,
         "Work" to Icons.Default.Work,
         "VolunteerActivism" to Icons.Default.VolunteerActivism,
-        "TrendingUp" to Icons.Default.TrendingUp,
+        "TrendingUp" to Icons.AutoMirrored.Filled.TrendingUp,
         "AttachMoney" to Icons.Default.AttachMoney,
         "CreditCard" to Icons.Default.CreditCard,
         "AccountBalanceWallet" to Icons.Default.AccountBalanceWallet,

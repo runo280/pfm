@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -338,7 +339,7 @@ fun AnalyticsScreen(
                                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountDropdownExpanded) },
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .menuAnchor(),
+                                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                                             shape = RoundedCornerShape(12.dp),
                                             textStyle = MaterialTheme.typography.bodySmall
                                         )
@@ -382,7 +383,7 @@ fun AnalyticsScreen(
                                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .menuAnchor(),
+                                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                                             shape = RoundedCornerShape(12.dp),
                                             textStyle = MaterialTheme.typography.bodySmall
                                         )

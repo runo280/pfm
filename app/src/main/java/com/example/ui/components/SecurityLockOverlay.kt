@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
@@ -245,7 +245,7 @@ fun SecurityLockOverlay(
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
-                                                imageVector = Icons.Default.Backspace,
+                                                imageVector = Icons.AutoMirrored.Filled.Backspace,
                                                 contentDescription = "حذف",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )

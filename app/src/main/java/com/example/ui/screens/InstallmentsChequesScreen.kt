@@ -12,8 +12,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -145,7 +148,7 @@ fun InstallmentsChequesScreen(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     text = { Text("چک‌ها (${JalaliCalendarHelper.toPersianDigits(cheques.size)})") },
-                    icon = { Icon(Icons.Default.ReceiptLong, contentDescription = null) }
+                    icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null) }
                 )
                 Tab(
                     selected = selectedTab == 2,
@@ -376,7 +379,7 @@ fun InstallmentsChequesScreen(
                                                 shape = RoundedCornerShape(10.dp),
                                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
                                             ) {
-                                                Icon(Icons.Default.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
                                                 Spacer(modifier = Modifier.width(3.dp))
                                                 Text(
                                                     "لغو پرداخت",
@@ -683,7 +686,7 @@ fun InstallmentsChequesScreen(
                                                 shape = RoundedCornerShape(10.dp),
                                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                                             ) {
-                                                Icon(Icons.Default.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
                                                 Spacer(modifier = Modifier.width(3.dp))
                                                 Text(
                                                     "بازگرداندن",
@@ -753,7 +756,7 @@ fun InstallmentsChequesScreen(
                                     color = IncomeGreen
                                 )
                             }
-                            Divider(modifier = Modifier.height(36.dp).width(1.dp))
+                            VerticalDivider(modifier = Modifier.height(36.dp))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("بدهکاری شما", style = MaterialTheme.typography.bodySmall, color = ExpenseRed)
                                 Text(
@@ -763,7 +766,7 @@ fun InstallmentsChequesScreen(
                                     color = ExpenseRed
                                 )
                             }
-                            Divider(modifier = Modifier.height(36.dp).width(1.dp))
+                            VerticalDivider(modifier = Modifier.height(36.dp))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("خالص مطالبات", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 Text(
@@ -971,7 +974,7 @@ fun InstallmentsChequesScreen(
                                                     shape = RoundedCornerShape(10.dp),
                                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                                                 ) {
-                                                    Icon(Icons.Default.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
                                                     Spacer(modifier = Modifier.width(3.dp))
                                                     Text(
                                                         "بازگرداندن",
@@ -1541,7 +1544,7 @@ fun AddEditInstallmentDialog(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
 
                     ExposedDropdownMenu(
@@ -1584,7 +1587,7 @@ fun AddEditInstallmentDialog(
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                             )
                             if (option.id < calcModeOptions.last().id) {
-                                Divider()
+                                HorizontalDivider()
                             }
                         }
                     }
@@ -1765,7 +1768,7 @@ fun AddEditInstallmentDialog(
                     }
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 // Date Selection Section
                 Text("تاریخ و جدول زمانی اقساط:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
@@ -1794,7 +1797,7 @@ fun AddEditInstallmentDialog(
                     singleLine = true
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 // Options for Past Installments
                 Text("ثبت اقساط قبلی پرداخت‌شده:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
@@ -1919,7 +1922,7 @@ fun LoanPreviewDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Text("پیش‌نمایش و تأیید نهایی ثبت وام", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         },
@@ -1952,7 +1955,7 @@ fun LoanPreviewDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -2445,7 +2448,7 @@ fun InstallmentItemsDialog(
                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
                                         ) {
                                             Icon(
-                                                Icons.Default.Undo,
+                                                Icons.AutoMirrored.Filled.Undo,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(16.dp)
                                             )
