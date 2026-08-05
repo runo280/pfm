@@ -72,22 +72,11 @@ jobs:
 
           CHANGES="• $COMMIT_TITLE"
           if [ -n "$COMMIT_BODY" ]; then
-            CHANGES="$CHANGES"$'\n'"$COMMIT_BODY"
+            CHANGES="$CHANGES
+$COMMIT_BODY"
           fi
 
-          # Ensure total caption stays under Telegram's 1024 character limit
-          CAPTION=$(cat <<EOF
-🚀 *نسخه جدید برنامه آماده شد (arm64-v8a)*
-
-📱 *برنامه:* حسابداری شخصی
-🏗 *معماری:* ARM64 (بهینه‌شده و کم‌حجم)
-👤 *توسعه‌دهنده:* $COMMIT_AUTHOR
-🔖 *کامیت:* \`$COMMIT_HASH\`
-
-📝 *لیست تغییرات:*
-$CHANGES
-EOF
-          )
+          CAPTION=$(printf "🚀 *نسخه جدید برنامه آماده شد (arm64-v8a)*\n\n📱 *برنامه:* حسابداری شخصی\n🏗 *معماری:* ARM64 (بهینه‌شده و کم‌حجم)\n👤 *توسعه‌دهنده:* %s\n🔖 *کامیت:* \`%s\`\n\n📝 *لیست تغییرات:*\n%s" "$COMMIT_AUTHOR" "$COMMIT_HASH" "$CHANGES")
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
                -F "chat_id=${TELEGRAM_CHAT_ID}" \
