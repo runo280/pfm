@@ -39,10 +39,20 @@ android {
     }
   }
 
+  splits {
+    abi {
+      isEnable = true
+      reset()
+      include("arm64-v8a")
+      isUniversalApk = false
+    }
+  }
+
   buildTypes {
     release {
+      isMinifyEnabled = true
+      isShrinkResources = true
       isCrunchPngs = false
-      isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }

@@ -1,0 +1,97 @@
+name: Android Release Build & Telegram Delivery
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-send:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Make Gradle Executable
+        run: chmod +x gradlew || true
+
+      - name: Generate Dummy Release Keystore
+        run: |
+          if [ ! -f "my-upload-key.jks" ]; then
+            echo "Creating a temporary keystore for Release build..."
+            keytool -genkey -v -keystore my-upload-key.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -storepass "android" -keypass "android" -dname "CN=Release, OU=Android, O=App, L=City, ST=State, C=US"
+          fi
+
+      - name: Build Release APK (arm64-v8a)
+        env:
+          STORE_PASSWORD: "android"
+          KEY_PASSWORD: "android"
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Locate Built ARM64 APK
+        id: locate_apk
+        run: |
+          # Priority to arm64-v8a APK from splits
+          APK_FILE=$(find app/build/outputs/apk/release/ -name "*arm64-v8a*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+          fi
+          if [ -z "$APK_FILE" ]; then
+            echo "Release APK file not found!"
+            exit 1
+          fi
+          echo "APK_PATH=$APK_FILE" >> $GITHUB_ENV
+          echo "Found Release APK at: $APK_FILE"
+
+      - name: Send APK File to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "⚠️ Warning: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing from Repository Secrets!"
+            echo "Please configure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in GitHub repository Settings -> Secrets and variables -> Actions."
+            exit 0
+          fi
+
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an")
+          COMMIT_TITLE=$(git log -1 --pretty=format:"%s")
+          COMMIT_BODY=$(git log -1 --pretty=format:"%b" | sed '/^$/d')
+
+          CHANGES="• $COMMIT_TITLE"
+          if [ -n "$COMMIT_BODY" ]; then
+            CHANGES="$CHANGES"$'\n'"$COMMIT_BODY"
+          fi
+
+          # Ensure total caption stays under Telegram's 1024 character limit
+          CAPTION=$(cat <<EOF
+🚀 *نسخه جدید برنامه آماده شد (arm64-v8a)*
+
+📱 *برنامه:* حسابداری شخصی
+🏗 *معماری:* ARM64 (بهینه‌شده و کم‌حجم)
+👤 *توسعه‌دهنده:* $COMMIT_AUTHOR
+🔖 *کامیت:* \`$COMMIT_HASH\`
+
+📝 *لیست تغییرات:*
+$CHANGES
+EOF
+          )
+
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+               -F "chat_id=${TELEGRAM_CHAT_ID}" \
+               -F "document=@${{ env.APK_PATH }}" \
+               -F "caption=${CAPTION}" \
+               -F "parse_mode=Markdown"
+
