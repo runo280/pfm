@@ -258,7 +258,9 @@ fun SettingsScreen(
                                                     Text(
                                                         text = acc.name,
                                                         style = MaterialTheme.typography.bodyMedium,
-                                                        fontWeight = FontWeight.Bold
+                                                        fontWeight = FontWeight.Bold,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
                                                     )
                                                     if (acc.isDefault) {
                                                         Spacer(modifier = Modifier.width(6.dp))
@@ -270,7 +272,9 @@ fun SettingsScreen(
                                                                 text = "پیش‌فرض",
                                                                 style = MaterialTheme.typography.labelSmall,
                                                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                                                maxLines = 1,
+                                                                overflow = TextOverflow.Ellipsis
                                                             )
                                                         }
                                                     }
@@ -279,7 +283,9 @@ fun SettingsScreen(
                                                     Text(
                                                         text = JalaliCalendarHelper.toPersianDigits(acc.accountNumber),
                                                         style = MaterialTheme.typography.labelSmall,
-                                                        color = Color.Gray
+                                                        color = Color.Gray,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
                                                     )
                                                 }
                                             }
@@ -594,71 +600,6 @@ fun SettingsScreen(
                                 checked = isBiometricEnabled,
                                 onCheckedChange = { onBiometricToggle(it) }
                             )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Section 2: Default Account Selection
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CreditCard, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "حساب پیش‌فرض برای ثبت هزینه",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text("حسابی که هنگام ثبت تراکنش‌های جدید به طور خودکار انتخاب می‌شود:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    var expanded by remember { mutableStateOf(false) }
-                    val currentDefault = accounts.find { it.isDefault } ?: accounts.firstOrNull()
-
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = currentDefault?.name ?: "هیچ حسابی موجود نیست",
-                            onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            accounts.forEach { acc ->
-                                DropdownMenuItem(
-                                    text = { Text(acc.name + if (acc.isDefault) " (پیش‌فرض)" else "") },
-                                    onClick = {
-                                        onSetDefaultAccount(acc.id)
-                                        expanded = false
-                                    }
-                                )
-                            }
                         }
                     }
                 }

@@ -164,6 +164,14 @@ fun TransactionsScreen(
         }
     }
 
+    var visibleTxCount by remember { mutableStateOf(50) }
+    LaunchedEffect(filteredTxs) {
+        visibleTxCount = 50
+    }
+    val displayedTxs = remember(filteredTxs, visibleTxCount) {
+        filteredTxs.take(visibleTxCount)
+    }
+
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -554,7 +562,7 @@ fun TransactionsScreen(
                     contentPadding = PaddingValues(bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filteredTxs, key = { it.id }) { tx ->
+                    items(displayedTxs, key = { it.id }) { tx ->
                         val category = categoryMap[tx.categoryId]
                         val account = accountMap[tx.accountId]
                         val icon = CategoryIconHelper.getIcon(category?.iconName ?: "MoreHoriz")
@@ -711,6 +719,25 @@ fun TransactionsScreen(
                                             )
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    if (displayedTxs.size < filteredTxs.size) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                OutlinedButton(
+                                    onClick = { visibleTxCount += 50 },
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    val remaining = filteredTxs.size - displayedTxs.size
+                                    Text("بارگذاری ۵۰ تراکنش بعدی (${JalaliCalendarHelper.toPersianDigits(remaining.toString())} مورد باقی‌مانده)")
                                 }
                             }
                         }

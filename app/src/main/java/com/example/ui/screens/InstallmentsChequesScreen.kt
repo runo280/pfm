@@ -82,6 +82,7 @@ fun InstallmentsChequesScreen(
     var showAddChequeDialog by remember { mutableStateOf(false) }
     var chequeToEdit by remember { mutableStateOf<ChequeEntity?>(null) }
     var chequeToPass by remember { mutableStateOf<ChequeEntity?>(null) }
+    var chequeToCopy by remember { mutableStateOf<ChequeEntity?>(null) }
 
     var showAddDebtDialog by remember { mutableStateOf(false) }
     var debtToEdit by remember { mutableStateOf<DebtEntity?>(null) }
@@ -634,6 +635,25 @@ fun InstallmentsChequesScreen(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+                                         OutlinedButton(
+                                            onClick = { chequeToCopy = chk },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(38.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(15.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text(
+                                                "کپی",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
                                         OutlinedButton(
                                             onClick = { showDeleteDialog = true },
                                             modifier = Modifier
@@ -1133,6 +1153,18 @@ fun InstallmentsChequesScreen(
             onSave = { updatedChk ->
                 onUpdateCheque(updatedChk)
                 chequeToEdit = null
+            }
+        )
+    }
+
+    if (chequeToCopy != null) {
+        AddEditChequeDialog(
+            cheque = chequeToCopy!!.copy(id = 0L),
+            currencyUnit = currencyUnit,
+            onDismiss = { chequeToCopy = null },
+            onSave = { newChk ->
+                onAddCheque(newChk)
+                chequeToCopy = null
             }
         )
     }

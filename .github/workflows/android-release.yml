@@ -26,15 +26,15 @@ jobs:
 
       - name: Generate Dummy Release Keystore
         run: |
-          if [ ! -f "my-upload-key.jks" ]; then
+          if [ ! -f "@ndroid.jks" ]; then
             echo "Creating a temporary keystore for Release build..."
             keytool -genkey -v -keystore my-upload-key.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -storepass "android" -keypass "android" -dname "CN=Release, OU=Android, O=App, L=City, ST=State, C=US"
           fi
 
       - name: Build Release APK (arm64-v8a)
         env:
-          STORE_PASSWORD: "android"
-          KEY_PASSWORD: "android"
+          STORE_PASSWORD: ${{ secrets.KEY_PASS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASS }}
         run: gradle assembleRelease --stacktrace
 
       - name: Locate Built ARM64 APK
@@ -59,4 +59,3 @@ jobs:
         run: |
           chmod +x .github/scripts/send_telegram.sh
           .github/scripts/send_telegram.sh
-

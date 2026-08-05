@@ -60,6 +60,42 @@ object ExportHelper {
         }
     }
 
+    private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {
+        if (text.isBlank()) return emptyList()
+        val words = text.trim().split("\\s+".toRegex())
+        val lines = mutableListOf<String>()
+        var currentLine = ""
+        for (word in words) {
+            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+            if (paint.measureText(testLine) <= maxWidth) {
+                currentLine = testLine
+            } else {
+                if (currentLine.isNotEmpty()) {
+                    lines.add(currentLine)
+                }
+                if (paint.measureText(word) > maxWidth) {
+                    var subWord = word
+                    while (subWord.isNotEmpty() && paint.measureText(subWord) > maxWidth) {
+                        var chunkLen = subWord.length - 1
+                        while (chunkLen > 0 && paint.measureText(subWord.substring(0, chunkLen)) > maxWidth) {
+                            chunkLen--
+                        }
+                        if (chunkLen == 0) chunkLen = 1
+                        lines.add(subWord.substring(0, chunkLen))
+                        subWord = subWord.substring(chunkLen)
+                    }
+                    currentLine = subWord
+                } else {
+                    currentLine = word
+                }
+            }
+        }
+        if (currentLine.isNotEmpty()) {
+            lines.add(currentLine)
+        }
+        return lines
+    }
+
     fun exportToPdf(
         context: Context,
         transactions: List<TransactionEntity>,
@@ -71,39 +107,137 @@ object ExportHelper {
     ): Uri? {
         return try {
             val pdfDocument = PdfDocument()
-            val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size
-            val page = pdfDocument.startPage(pageInfo)
-            val canvas: Canvas = page.canvas
-
-            val paint = Paint().apply {
-                isAntiAlias = true
-                color = Color.BLACK
-                textSize = 12f
-            }
+            var pageNum = 1
+            var pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageNum).create()
+            var currentPage = pdfDocument.startPage(pageInfo)
+            var canvas: Canvas = currentPage.canvas
 
             val titlePaint = Paint().apply {
                 isAntiAlias = true
                 color = Color.rgb(13, 27, 42) // Dark Navy
-                textSize = 20f
+                textSize = 18f
                 typeface = Typeface.DEFAULT_BOLD
             }
 
-            val headerPaint = Paint().apply {
+            val datePaint = Paint().apply {
                 isAntiAlias = true
-                color = Color.rgb(16, 185, 129) // Emerald
-                textSize = 14f
+                color = Color.rgb(71, 85, 105)
+                textSize = 11f
+            }
+
+            val sectionTitlePaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
+            }
+
+            val tableHeaderPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(30, 41, 59)
+                textSize = 10.5f
+                typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.RIGHT
+            }
+
+            val tableHeaderLeftPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(30, 41, 59)
+                textSize = 10.5f
+                typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.LEFT
+            }
+
+            val bodyPaintRight = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLACK
+                textSize = 10f
+                textAlign = Paint.Align.RIGHT
+            }
+
+            val titleBoldPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(15, 23, 42)
+                textSize = 10f
+                typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.RIGHT
+            }
+
+            val notePaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(71, 85, 105)
+                textSize = 9f
+                textAlign = Paint.Align.RIGHT
+            }
+
+            val subTextPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(51, 65, 85)
+                textSize = 9.5f
+                textAlign = Paint.Align.RIGHT
+            }
+
+            val incomeAmountPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(16, 185, 129)
+                textSize = 10f
+                typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.LEFT
+            }
+
+            val expenseAmountPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(239, 68, 68)
+                textSize = 10f
+                typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.LEFT
+            }
+
+            val dividerPaint = Paint().apply {
+                color = Color.rgb(226, 232, 240)
+                strokeWidth = 0.8f
+            }
+
+            val linePaint = Paint().apply {
+                color = Color.rgb(148, 163, 184)
+                strokeWidth = 1f
+            }
+
+            var y = 45f
+
+            fun checkPageBreak(requiredHeight: Float, activeSectionName: String? = null, activeSectionColor: Int? = null) {
+                if (y + requiredHeight > 780f) {
+                    pdfDocument.finishPage(currentPage)
+                    pageNum++
+                    pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageNum).create()
+                    currentPage = pdfDocument.startPage(pageInfo)
+                    canvas = currentPage.canvas
+                    y = 45f
+
+                    if (activeSectionName != null && activeSectionColor != null) {
+                        sectionTitlePaint.color = activeSectionColor
+                        canvas.drawText("$activeSectionName (ادامه)", 550f, y, sectionTitlePaint.apply { textAlign = Paint.Align.RIGHT })
+                        y += 20f
+
+                        canvas.drawText("ردیف", 550f, y, tableHeaderPaint)
+                        canvas.drawText("تاریخ", 515f, y, tableHeaderPaint)
+                        canvas.drawText("عنوان و توضیحات", 445f, y, tableHeaderPaint)
+                        canvas.drawText("دسته / حساب", 225f, y, tableHeaderPaint)
+                        canvas.drawText("مبلغ (${currencyUnit.titleFa})", 40f, y, tableHeaderLeftPaint)
+                        y += 8f
+                        canvas.drawLine(40f, y, 550f, y, linePaint)
+                        y += 18f
+                    }
+                }
             }
 
             // Document Header
-            var y = 50f
-            canvas.drawText("گزارش تراکنش‌های مالی - مدیریت مالی", 50f, y, titlePaint)
-            y += 25f
-            val dateStr = "تاریخ تنظیم: ${JalaliCalendarHelper.getCurrentJalaliDate().toReadablePersianString()}"
-            canvas.drawText(dateStr, 50f, y, paint)
-            y += 35f
+            canvas.drawText("گزارش جامع تراکنش‌های مالی - مدیریت مالی", 550f, y, titlePaint.apply { textAlign = Paint.Align.RIGHT })
+            y += 22f
+            val dateStr = "تاریخ تنظیم گزارش: ${JalaliCalendarHelper.getCurrentJalaliDate().toReadablePersianString()}"
+            canvas.drawText(dateStr, 550f, y, datePaint.apply { textAlign = Paint.Align.RIGHT })
+            y += 30f
 
-            // Summary Box Background
+            // Summary Box
             val netBalance = totalIncome - totalExpense
             val incStr = "جمع درآمدها: ${CurrencyHelper.formatAmount(totalIncome, currencyUnit)}"
             val expStr = "جمع هزینه‌ها: ${CurrencyHelper.formatAmount(totalExpense, currencyUnit)}"
@@ -119,81 +253,153 @@ object ExportHelper {
                 strokeWidth = 1f
             }
 
-            canvas.drawRect(40f, y - 18f, 550f, y + 22f, summaryBgPaint)
-            canvas.drawRect(40f, y - 18f, 550f, y + 22f, summaryBorderPaint)
+            canvas.drawRect(40f, y - 16f, 550f, y + 24f, summaryBgPaint)
+            canvas.drawRect(40f, y - 16f, 550f, y + 22f, summaryBorderPaint)
 
-            val incomePaint = Paint().apply {
+            val summaryIncomePaint = Paint().apply {
                 isAntiAlias = true
-                color = Color.rgb(16, 185, 129) // Emerald Green
-                textSize = 11f
+                color = Color.rgb(16, 185, 129)
+                textSize = 10.5f
                 typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.RIGHT
             }
-
-            val expensePaint = Paint().apply {
+            val summaryExpensePaint = Paint().apply {
                 isAntiAlias = true
-                color = Color.rgb(239, 68, 68) // Red
-                textSize = 11f
+                color = Color.rgb(239, 68, 68)
+                textSize = 10.5f
                 typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.RIGHT
             }
-
-            val diffPaint = Paint().apply {
+            val summaryDiffPaint = Paint().apply {
                 isAntiAlias = true
                 color = if (netBalance >= 0) Color.rgb(16, 185, 129) else Color.rgb(239, 68, 68)
-                textSize = 11f
+                textSize = 10.5f
                 typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.RIGHT
             }
 
-            canvas.drawText(incStr, 50f, y, incomePaint)
-            canvas.drawText(expStr, 220f, y, expensePaint)
-            canvas.drawText(diffStr, 385f, y, diffPaint)
+            canvas.drawText(incStr, 540f, y, summaryIncomePaint)
+            canvas.drawText(expStr, 360f, y, summaryExpensePaint)
+            canvas.drawText(diffStr, 180f, y, summaryDiffPaint)
             y += 45f
 
-            // Table Header
-            paint.typeface = Typeface.DEFAULT_BOLD
-            paint.textSize = 11f
-            canvas.drawText("ردیف", 40f, y, paint)
-            canvas.drawText("تاریخ", 80f, y, paint)
-            canvas.drawText("عنوان", 160f, y, paint)
-            canvas.drawText("نوع", 320f, y, paint)
-            canvas.drawText("مبلغ", 390f, y, paint)
-            canvas.drawText("حساب", 480f, y, paint)
-            y += 10f
+            // Split transactions into lists
+            val incomeList = transactions.filter { it.type == "INCOME" }
+            val expenseList = transactions.filter { it.type == "EXPENSE" }
+            val transferList = transactions.filter { it.type == "TRANSFER" }
 
-            // Table Line
-            val linePaint = Paint().apply {
-                color = Color.LTGRAY
-                strokeWidth = 1f
-            }
-            canvas.drawLine(40f, y, 550f, y, linePaint)
-            y += 20f
+            fun renderTransactionSection(
+                sectionName: String,
+                sectionColor: Int,
+                txList: List<TransactionEntity>,
+                isIncome: Boolean
+            ) {
+                checkPageBreak(60f)
+                sectionTitlePaint.color = sectionColor
+                canvas.drawText(sectionName, 550f, y, sectionTitlePaint.apply { textAlign = Paint.Align.RIGHT })
+                y += 20f
 
-            paint.typeface = Typeface.DEFAULT
-            paint.textSize = 10f
-
-            val limit = minOf(transactions.size, 35) // Fit first page
-            for (i in 0 until limit) {
-                val tx = transactions[i]
-                val typeFa = when (tx.type) {
-                    "EXPENSE" -> "هزینه"
-                    "INCOME" -> "درآمد"
-                    else -> "انتقال"
+                if (txList.isEmpty()) {
+                    val emptyPaint = Paint().apply {
+                        isAntiAlias = true
+                        color = Color.GRAY
+                        textSize = 10f
+                        textAlign = Paint.Align.RIGHT
+                    }
+                    canvas.drawText("هیچ تراکنشی در این بخش ثبت نشده است.", 550f, y, emptyPaint)
+                    y += 25f
+                    return
                 }
-                val acc = accountsMap[tx.accountId]?.name ?: "-"
-                val amountStr = CurrencyHelper.formatAmount(tx.amount, currencyUnit, includeUnit = false)
 
-                val truncatedTitle = if (tx.title.length > 22) tx.title.take(20) + ".." else tx.title
-
-                canvas.drawText("${i + 1}", 40f, y, paint)
-                canvas.drawText(tx.jalaliDate, 80f, y, paint)
-                canvas.drawText(truncatedTitle, 160f, y, paint)
-                canvas.drawText(typeFa, 320f, y, paint)
-                canvas.drawText(amountStr, 390f, y, paint)
-                canvas.drawText(acc, 480f, y, paint)
-
+                // Table Header RTL
+                canvas.drawText("ردیف", 550f, y, tableHeaderPaint)
+                canvas.drawText("تاریخ", 515f, y, tableHeaderPaint)
+                canvas.drawText("عنوان و توضیحات", 445f, y, tableHeaderPaint)
+                canvas.drawText("دسته / حساب", 225f, y, tableHeaderPaint)
+                canvas.drawText("مبلغ (${currencyUnit.titleFa})", 40f, y, tableHeaderLeftPaint)
+                y += 8f
+                canvas.drawLine(40f, y, 550f, y, linePaint)
                 y += 18f
+
+                txList.forEachIndexed { index, tx ->
+                    val titleLines = wrapText(tx.title, titleBoldPaint, 210f)
+                    val noteText = if (tx.note.isNotBlank()) "توضیحات: ${tx.note}" else ""
+                    val noteLines = if (noteText.isNotBlank()) wrapText(noteText, notePaint, 210f) else emptyList()
+
+                    val catName = categoriesMap[tx.categoryId]?.name ?: "بدون دسته‌بندی"
+                    val accName = accountsMap[tx.accountId]?.name ?: "-"
+                    val catAccStr = "$catName ($accName)"
+                    val catAccLines = wrapText(catAccStr, subTextPaint, 175f)
+
+                    val textBlockLines = titleLines.size + noteLines.size
+                    val maxLines = maxOf(textBlockLines, catAccLines.size, 1)
+                    val rowHeight = maxLines * 13f + 10f
+
+                    checkPageBreak(rowHeight, sectionName, sectionColor)
+
+                    // Draw Row Index (RTL at x=550)
+                    canvas.drawText("${index + 1}", 550f, y + 10f, bodyPaintRight)
+
+                    // Draw Date (RTL at x=515)
+                    canvas.drawText(tx.jalaliDate, 515f, y + 10f, bodyPaintRight)
+
+                    // Draw Title & Full Description (RTL at x=445)
+                    var lineY = y + 10f
+                    titleLines.forEach { line ->
+                        canvas.drawText(line, 445f, lineY, titleBoldPaint)
+                        lineY += 13f
+                    }
+                    noteLines.forEach { line ->
+                        canvas.drawText(line, 445f, lineY, notePaint)
+                        lineY += 13f
+                    }
+
+                    // Draw Category & Account (RTL at x=225)
+                    var catY = y + 10f
+                    catAccLines.forEach { line ->
+                        canvas.drawText(line, 225f, catY, subTextPaint)
+                        catY += 13f
+                    }
+
+                    // Draw Amount (LEFT aligned at x=40)
+                    val amountStr = CurrencyHelper.formatAmount(tx.amount, currencyUnit, includeUnit = false)
+                    val amtPaint = if (isIncome) incomeAmountPaint else expenseAmountPaint
+                    canvas.drawText(amountStr, 40f, y + 10f, amtPaint)
+
+                    y += rowHeight
+                    canvas.drawLine(40f, y - 4f, 550f, y - 4f, dividerPaint)
+                }
+
+                y += 20f
             }
 
-            pdfDocument.finishPage(page)
+            // Render Income Section
+            renderTransactionSection(
+                sectionName = "۱. لیست درآمدها",
+                sectionColor = Color.rgb(16, 185, 129), // Green
+                txList = incomeList,
+                isIncome = true
+            )
+
+            // Render Expense Section
+            renderTransactionSection(
+                sectionName = "۲. لیست هزینه‌ها",
+                sectionColor = Color.rgb(239, 68, 68), // Red
+                txList = expenseList,
+                isIncome = false
+            )
+
+            // Render Transfer Section (if any transfers exist)
+            if (transferList.isNotEmpty()) {
+                renderTransactionSection(
+                    sectionName = "۳. لیست انتقال‌ها",
+                    sectionColor = Color.rgb(59, 130, 246), // Blue
+                    txList = transferList,
+                    isIncome = false
+                )
+            }
+
+            pdfDocument.finishPage(currentPage)
 
             val fileName = "گزارش_مالی_${JalaliCalendarHelper.getCurrentJalaliDateTimeString()}.pdf"
             val file = File(context.cacheDir, fileName)
