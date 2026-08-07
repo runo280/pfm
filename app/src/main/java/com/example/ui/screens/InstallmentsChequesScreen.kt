@@ -26,6 +26,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -56,16 +58,16 @@ fun InstallmentsChequesScreen(
     onAddInstallment: (InstallmentEntity, List<Double>?) -> Unit,
     onUpdateInstallment: (InstallmentEntity) -> Unit,
     onDeleteInstallment: (InstallmentEntity) -> Unit,
-    onPayInstallment: (InstallmentEntity, Long) -> Unit,
+    onPayInstallment: (InstallmentEntity, Long, Boolean) -> Unit,
     onUnpayInstallment: ((InstallmentEntity) -> Unit)? = null,
     onGetInstallmentItems: ((Long) -> Flow<List<InstallmentItemEntity>>)? = null,
     onUpdateInstallmentItem: ((InstallmentItemEntity) -> Unit)? = null,
-    onPaySpecificInstallmentItem: ((InstallmentEntity, InstallmentItemEntity, Long) -> Unit)? = null,
+    onPaySpecificInstallmentItem: ((InstallmentEntity, InstallmentItemEntity, Long, Boolean) -> Unit)? = null,
     onUnpaySpecificInstallmentItem: ((InstallmentEntity, InstallmentItemEntity) -> Unit)? = null,
     onAddCheque: (ChequeEntity) -> Unit,
     onUpdateCheque: (ChequeEntity) -> Unit,
     onDeleteCheque: (ChequeEntity) -> Unit,
-    onMarkChequePassed: (ChequeEntity, Long) -> Unit,
+    onMarkChequePassed: (ChequeEntity, Long, Boolean) -> Unit,
     onUnpassCheque: ((ChequeEntity) -> Unit)? = null,
     onAddDebt: ((DebtEntity) -> Unit)? = null,
     onUpdateDebt: ((DebtEntity) -> Unit)? = null,
@@ -1076,8 +1078,8 @@ fun InstallmentsChequesScreen(
             onDismiss = { installmentForDetails = null },
             onGetInstallmentItems = onGetInstallmentItems,
             onUpdateInstallmentItem = { item -> onUpdateInstallmentItem?.invoke(item) },
-            onPaySpecificInstallmentItem = { inst, item, accountId ->
-                onPaySpecificInstallmentItem?.invoke(inst, item, accountId)
+            onPaySpecificInstallmentItem = { inst, item, accountId, createTx ->
+                onPaySpecificInstallmentItem?.invoke(inst, item, accountId, createTx)
             },
             onUnpaySpecificInstallmentItem = { inst, item ->
                 onUnpaySpecificInstallmentItem?.invoke(inst, item)
@@ -1101,8 +1103,8 @@ fun InstallmentsChequesScreen(
             accounts = accounts,
             currencyUnit = currencyUnit,
             onDismiss = { installmentToPay = null },
-            onConfirm = { accountId ->
-                onPayInstallment(installmentToPay!!, accountId)
+            onConfirm = { accountId, createTx ->
+                onPayInstallment(installmentToPay!!, accountId, createTx)
                 installmentToPay = null
             }
         )
@@ -1116,8 +1118,8 @@ fun InstallmentsChequesScreen(
             accounts = accounts,
             currencyUnit = currencyUnit,
             onDismiss = { chequeToPass = null },
-            onConfirm = { accountId ->
-                onMarkChequePassed(chequeToPass!!, accountId)
+            onConfirm = { accountId, createTx ->
+                onMarkChequePassed(chequeToPass!!, accountId, createTx)
                 chequeToPass = null
             }
         )
@@ -1229,9 +1231,10 @@ fun SelectAccountActionDialog(
     accounts: List<AccountEntity>,
     currencyUnit: CurrencyUnit,
     onDismiss: () -> Unit,
-    onConfirm: (Long) -> Unit
+    onConfirm: (accountId: Long, createTransaction: Boolean) -> Unit
 ) {
     var selectedAccountId by remember { mutableStateOf(accounts.firstOrNull()?.id ?: 1L) }
+    var createTransaction by remember { mutableStateOf(true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1247,10 +1250,41 @@ fun SelectAccountActionDialog(
                     currencyUnit = currencyUnit,
                     onAccountSelected = { selectedAccountId = it }
                 )
+
+                Surface(
+                    onClick = { createTransaction = !createTransaction },
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = createTransaction,
+                            onCheckedChange = { createTransaction = it }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Column {
+                            Text(
+                                text = "ثبت خودکار تراکنش مالی در حساب",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (createTransaction) "تراکنش به لیست تراکنش‌ها اضافه و از موجودی کسر/واریز می‌شود"
+                                       else "فقط وضعیت ثبت می‌شود و تراکنش جدیدی ایجاد نخواهد شد",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(selectedAccountId) }) {
+            Button(onClick = { onConfirm(selectedAccountId, createTransaction) }) {
                 Text("تأیید و انجام")
             }
         },
@@ -2213,6 +2247,7 @@ fun AddEditChequeDialog(
                     value = amountValue,
                     onValueChange = { amountValue = CurrencyHelper.formatAmountTextFieldValue(it) },
                     label = { Text("مبلغ چک (${currencyUnit.titleFa})") },
+                    textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left),
                     supportingText = if (amountValue.text.isNotBlank()) {
                         {
                             val raw = CurrencyHelper.parseRawAmount(amountValue.text)
@@ -2285,8 +2320,6 @@ fun AddEditChequeDialog(
         }
     )
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstallmentItemsDialog(
     installment: InstallmentEntity,
@@ -2295,7 +2328,7 @@ fun InstallmentItemsDialog(
     onDismiss: () -> Unit,
     onGetInstallmentItems: (Long) -> Flow<List<InstallmentItemEntity>>,
     onUpdateInstallmentItem: (InstallmentItemEntity) -> Unit,
-    onPaySpecificInstallmentItem: (InstallmentEntity, InstallmentItemEntity, Long) -> Unit,
+    onPaySpecificInstallmentItem: (InstallmentEntity, InstallmentItemEntity, Long, Boolean) -> Unit,
     onUnpaySpecificInstallmentItem: ((InstallmentEntity, InstallmentItemEntity) -> Unit)? = null
 ) {
     val itemsFlow = remember(installment.id) { onGetInstallmentItems(installment.id) }
@@ -2323,8 +2356,8 @@ fun InstallmentItemsDialog(
             accounts = accounts,
             currencyUnit = currencyUnit,
             onDismiss = { itemToPay = null },
-            onConfirm = { accountId ->
-                onPaySpecificInstallmentItem(installment, itemToPay!!, accountId)
+            onConfirm = { accountId, createTx ->
+                onPaySpecificInstallmentItem(installment, itemToPay!!, accountId, createTx)
                 itemToPay = null
             }
         )
@@ -2356,7 +2389,7 @@ fun InstallmentItemsDialog(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(items, key = { it.id }) { item ->
                         val dueDate = JalaliCalendarHelper.getInstallmentItemDueDate(installment, item.installmentNumber)
@@ -2364,82 +2397,119 @@ fun InstallmentItemsDialog(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (item.isPaid) IncomeGreenContainer else MaterialTheme.colorScheme.surfaceVariant
+                                containerColor = if (item.isPaid) IncomeGreenContainer.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                width = 1.dp,
+                                color = if (item.isPaid) IncomeGreen.copy(alpha = 0.3f)
+                                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            )
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                // Row 1: Number & Status Badge | Amount
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = "قسط شماره ${JalaliCalendarHelper.toPersianDigits(item.installmentNumber)} (وام #${JalaliCalendarHelper.toPersianDigits(installment.id)})",
-                                            style = MaterialTheme.typography.titleSmall,
+                                            text = "قسط شماره ${JalaliCalendarHelper.toPersianDigits(item.installmentNumber)}",
+                                            style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold
                                         )
-                                        if (item.isPaid) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                color = IncomeGreen.copy(alpha = 0.2f),
-                                                shape = RoundedCornerShape(6.dp)
-                                            ) {
-                                                Text(
-                                                    text = "پرداخت شده",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = IncomeGreen,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            color = if (item.isPaid) IncomeGreen.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primaryContainer,
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = if (item.isPaid) "پرداخت شده" else "در انتظار پرداخت",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (item.isPaid) IncomeGreen else MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
                                         }
                                     }
 
-                                    Spacer(modifier = Modifier.height(4.dp))
-
                                     Text(
-                                        text = "تاریخ سررسید: ${dueDate.toReadablePersianString()}",
+                                        text = CurrencyHelper.formatAmount(item.amount, currencyUnit),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                                // Row 2: Dates (Due date & Paid date)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "سررسید: ${dueDate.toReadablePersianString()}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
 
                                     if (item.isPaid && !item.paidDateJalali.isNullOrBlank()) {
                                         Text(
-                                            text = "تاریخ پرداخت: ${JalaliCalendarHelper.toPersianDigits(item.paidDateJalali)}",
+                                            text = "پرداخت: ${JalaliCalendarHelper.toPersianDigits(item.paidDateJalali)}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = IncomeGreen,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
+                                }
 
-                                    Spacer(modifier = Modifier.height(2.dp))
-
-                                    Text(
-                                        text = CurrencyHelper.formatAmount(item.amount, currencyUnit),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-
-                                    if (item.note.isNotBlank()) {
-                                        Text(
-                                            text = item.note,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.Gray
-                                        )
+                                // Row 3: Description/Note - FULL WIDTH on dedicated row without truncation
+                                if (item.note.isNotBlank()) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Notes,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "توضیحات: ${item.note}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = Int.MAX_VALUE,
+                                                softWrap = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
                                     }
                                 }
 
+                                // Row 4: Action Buttons Right Aligned
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     OutlinedButton(
                                         onClick = { itemToEdit = item },
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
                                         Icon(
@@ -2451,10 +2521,12 @@ fun InstallmentItemsDialog(
                                         Text("ویرایش", style = MaterialTheme.typography.labelMedium)
                                     }
 
+                                    Spacer(modifier = Modifier.width(8.dp))
+
                                     if (item.isPaid) {
                                         OutlinedButton(
                                             onClick = { onUnpaySpecificInstallmentItem?.invoke(installment, item) },
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                             shape = RoundedCornerShape(8.dp),
                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
                                         ) {
@@ -2469,7 +2541,7 @@ fun InstallmentItemsDialog(
                                     } else {
                                         Button(
                                             onClick = { itemToPay = item },
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                             shape = RoundedCornerShape(8.dp),
                                             colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen)
                                         ) {
@@ -2479,7 +2551,7 @@ fun InstallmentItemsDialog(
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("پرداخت", style = MaterialTheme.typography.labelMedium)
+                                            Text("پرداخت قسط", style = MaterialTheme.typography.labelMedium)
                                         }
                                     }
                                 }

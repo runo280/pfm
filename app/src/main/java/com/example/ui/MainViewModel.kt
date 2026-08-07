@@ -379,10 +379,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun payInstallment(installment: InstallmentEntity, accountId: Long) {
+    fun payInstallment(installment: InstallmentEntity, accountId: Long, createTransaction: Boolean = true) {
         viewModelScope.launch {
-            repository.payInstallment(installment, accountId)
-            _userMessage.emit("قسط با موفقیت پرداخت و هزینه آن ثبت شد.")
+            repository.payInstallment(installment, accountId, createTransaction)
+            _userMessage.emit("قسط با موفقیت پرداخت شد.")
         }
     }
 
@@ -421,9 +421,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun paySpecificInstallmentItem(installment: InstallmentEntity, item: InstallmentItemEntity, accountId: Long) {
+    fun paySpecificInstallmentItem(installment: InstallmentEntity, item: InstallmentItemEntity, accountId: Long, createTransaction: Boolean = true) {
         viewModelScope.launch {
-            repository.paySpecificInstallmentItem(installment, item, accountId)
+            repository.paySpecificInstallmentItem(installment, item, accountId, createTransaction)
             _userMessage.emit("قسط شماره ${item.installmentNumber} با موفقیت پرداخت شد.")
         }
     }
@@ -450,10 +450,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun markChequePassed(cheque: ChequeEntity, accountId: Long) {
+    fun markChequePassed(cheque: ChequeEntity, accountId: Long, createTransaction: Boolean = true) {
         viewModelScope.launch {
-            repository.markChequePassed(cheque, accountId)
-            _userMessage.emit("چک با موفقیت پاس شد و تراکنش آن ثبت گردید.")
+            repository.markChequePassed(cheque, accountId, createTransaction)
+            _userMessage.emit("وضعیت چک با موفقیت بروزرسانی شد.")
         }
     }
 

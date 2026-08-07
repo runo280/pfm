@@ -336,7 +336,7 @@ class FinanceRepository(private val database: AppDatabase) {
         installmentItemDao.updateItem(item)
     }
 
-    suspend fun paySpecificInstallmentItem(installment: InstallmentEntity, item: InstallmentItemEntity, accountId: Long) {
+    suspend fun paySpecificInstallmentItem(installment: InstallmentEntity, item: InstallmentItemEntity, accountId: Long, createTransaction: Boolean = true) {
         val updatedItem = item.copy(
             isPaid = true,
             paidDateJalali = JalaliCalendarHelper.getCurrentJalaliDate().toFormattedString()
@@ -349,22 +349,24 @@ class FinanceRepository(private val database: AppDatabase) {
         val updatedInstallment = installment.copy(paidInstallments = paidCount, status = newStatus)
         installmentDao.updateInstallment(updatedInstallment)
 
-        val categories = categoryDao.getAllCategoriesSync()
-        val installmentCatId = categories.firstOrNull { it.name.contains("اقساط") }?.id
+        if (createTransaction) {
+            val categories = categoryDao.getAllCategoriesSync()
+            val installmentCatId = categories.firstOrNull { it.name.contains("اقساط") }?.id
 
-        val tx = TransactionEntity(
-            type = "EXPENSE",
-            amount = item.amount,
-            accountId = accountId,
-            categoryId = installmentCatId,
-            jalaliDate = JalaliCalendarHelper.getCurrentJalaliDate().toFormattedString(),
-            title = "پرداخت قسط شماره ${item.installmentNumber}: ${installment.title}",
-            note = if (item.note.isNotBlank()) item.note else installment.note
-        )
-        addTransaction(tx)
+            val tx = TransactionEntity(
+                type = "EXPENSE",
+                amount = item.amount,
+                accountId = accountId,
+                categoryId = installmentCatId,
+                jalaliDate = JalaliCalendarHelper.getCurrentJalaliDate().toFormattedString(),
+                title = "پرداخت قسط شماره ${item.installmentNumber}: ${installment.title}",
+                note = if (item.note.isNotBlank()) item.note else installment.note
+            )
+            addTransaction(tx)
+        }
     }
 
-    suspend fun payInstallment(installment: InstallmentEntity, accountId: Long) {
+    suspend fun payInstallment(installment: InstallmentEntity, accountId: Long, createTransaction: Boolean = true) {
         var items = installmentItemDao.getItemsForInstallmentSync(installment.id)
         if (items.isEmpty()) {
             // Auto-generate items if legacy
@@ -382,26 +384,28 @@ class FinanceRepository(private val database: AppDatabase) {
 
         val firstUnpaid = items.firstOrNull { !it.isPaid }
         if (firstUnpaid != null) {
-            paySpecificInstallmentItem(installment, firstUnpaid, accountId)
+            paySpecificInstallmentItem(installment, firstUnpaid, accountId, createTransaction)
         } else {
             val newPaidCount = installment.paidInstallments + 1
             val newStatus = if (newPaidCount >= installment.totalInstallments) "COMPLETED" else "ACTIVE"
             val updated = installment.copy(paidInstallments = newPaidCount, status = newStatus)
             installmentDao.updateInstallment(updated)
 
-            val categories = categoryDao.getAllCategoriesSync()
-            val installmentCatId = categories.firstOrNull { it.name.contains("اقساط") }?.id
+            if (createTransaction) {
+                val categories = categoryDao.getAllCategoriesSync()
+                val installmentCatId = categories.firstOrNull { it.name.contains("اقساط") }?.id
 
-            val tx = TransactionEntity(
-                type = "EXPENSE",
-                amount = installment.monthlyPayment,
-                accountId = accountId,
-                categoryId = installmentCatId,
-                jalaliDate = JalaliCalendarHelper.getCurrentJalaliDate().toFormattedString(),
-                title = "پرداخت قسط: ${installment.title} (${newPaidCount} از ${installment.totalInstallments})",
-                note = installment.note
-            )
-            addTransaction(tx)
+                val tx = TransactionEntity(
+                    type = "EXPENSE",
+                    amount = installment.monthlyPayment,
+                    accountId = accountId,
+                    categoryId = installmentCatId,
+                    jalaliDate = JalaliCalendarHelper.getCurrentJalaliDate().toFormattedString(),
+                    title = "پرداخت قسط: ${installment.title} (${newPaidCount} از ${installment.totalInstallments})",
+                    note = installment.note
+                )
+                addTransaction(tx)
+            }
         }
     }
 
@@ -456,34 +460,36 @@ class FinanceRepository(private val database: AppDatabase) {
         chequeDao.updateCheque(updated)
     }
 
-    suspend fun markChequePassed(cheque: ChequeEntity, accountId: Long) {
+    suspend fun markChequePassed(cheque: ChequeEntity, accountId: Long, createTransaction: Boolean = true) {
         val updated = cheque.copy(status = "PASSED", accountId = accountId)
         chequeDao.updateCheque(updated)
 
-        val txType = if (cheque.type == "RECEIVABLE") "INCOME" else "EXPENSE"
-        val txTitle = if (cheque.type == "RECEIVABLE") {
-            "وصول چک دریافتی: ${cheque.bankName} (شماره ${cheque.chequeNumber})"
-        } else {
-            "پاس شدن چک پرداختی: ${cheque.bankName} (شماره ${cheque.chequeNumber})"
-        }
+        if (createTransaction) {
+            val txType = if (cheque.type == "RECEIVABLE") "INCOME" else "EXPENSE"
+            val txTitle = if (cheque.type == "RECEIVABLE") {
+                "وصول چک دریافتی: ${cheque.bankName} (شماره ${cheque.chequeNumber})"
+            } else {
+                "پاس شدن چک پرداختی: ${cheque.bankName} (شماره ${cheque.chequeNumber})"
+            }
 
-        val categories = categoryDao.getAllCategoriesSync()
-        val categoryId = if (cheque.type == "RECEIVABLE") {
-            categories.firstOrNull { it.type == "INCOME" && it.name.contains("سایر") }?.id
-        } else {
-            categories.firstOrNull { it.name.contains("چک") || it.name.contains("اقساط") }?.id
-        }
+            val categories = categoryDao.getAllCategoriesSync()
+            val categoryId = if (cheque.type == "RECEIVABLE") {
+                categories.firstOrNull { it.type == "INCOME" && it.name.contains("سایر") }?.id
+            } else {
+                categories.firstOrNull { it.name.contains("چک") || it.name.contains("اقساط") }?.id
+            }
 
-        val tx = TransactionEntity(
-            type = txType,
-            amount = cheque.amount,
-            accountId = accountId,
-            categoryId = categoryId,
-            jalaliDate = cheque.dueDateJalali,
-            title = txTitle,
-            note = "طرف حساب: ${cheque.payeeOrDrawer}"
-        )
-        addTransaction(tx)
+            val tx = TransactionEntity(
+                type = txType,
+                amount = cheque.amount,
+                accountId = accountId,
+                categoryId = categoryId,
+                jalaliDate = cheque.dueDateJalali,
+                title = txTitle,
+                note = "طرف حساب: ${cheque.payeeOrDrawer}"
+            )
+            addTransaction(tx)
+        }
     }
 
     // --- Debts ---
