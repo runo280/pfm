@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.local.AccountEntity
 import com.example.data.local.CategoryEntity
 import com.example.data.local.TransactionEntity
@@ -36,6 +37,7 @@ import com.example.util.CurrencyHelper
 import com.example.util.CurrencyUnit
 import com.example.util.FilterPreferences
 import com.example.util.JalaliCalendarHelper
+import com.example.util.JalaliDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -614,6 +616,140 @@ fun AnalyticsScreen(
                     }
                 }
             }
+
+            // Periodic Comparison Bar Chart Card
+            if (dateFilterMode in listOf("DAILY", "WEEKLY", "MONTH", "YEAR")) {
+                item {
+                    val comparisonTitle = when (dateFilterMode) {
+                        "DAILY" -> {
+                            val monthName = JalaliCalendarHelper.PERSIAN_MONTH_NAMES.getOrNull(selectedDailyDate.month - 1) ?: ""
+                            "مقایسه روزهای ماه ($monthName ${JalaliCalendarHelper.toPersianDigits(selectedDailyDate.year)})"
+                        }
+                        "WEEKLY" -> "مقایسه ۷ هفته اخیر"
+                        "MONTH" -> "مقایسه ماه‌های سال (${JalaliCalendarHelper.toPersianDigits(selectedYearInt)})"
+                        "YEAR" -> "مقایسه سال‌های موجود"
+                        else -> "نمودار مقایسه دوره"
+                    }
+
+                    val comparisonBars = remember(
+                        transactions, dateFilterMode, selectedDailyDate, selectedWeeklyEndDate,
+                        selectedYearInt, selectedMonthInt, selectedAccountId, selectedCategoryId
+                    ) {
+                        when (dateFilterMode) {
+                            "DAILY" -> {
+                                val daysInMonth = JalaliCalendarHelper.getDaysInJalaliMonth(selectedDailyDate.year, selectedDailyDate.month)
+                                val monthName = JalaliCalendarHelper.PERSIAN_MONTH_NAMES.getOrNull(selectedDailyDate.month - 1) ?: ""
+                                (1..daysInMonth).map { day ->
+                                    val dateStr = String.format(java.util.Locale.US, "%04d/%02d/%02d", selectedDailyDate.year, selectedDailyDate.month, day)
+                                    val dayTxs = transactions.filter { tx ->
+                                        tx.jalaliDate == dateStr &&
+                                        (selectedAccountId == null || tx.accountId == selectedAccountId) &&
+                                        (selectedCategoryId == null || tx.categoryId == selectedCategoryId || tx.subcategoryId == selectedCategoryId)
+                                    }
+                                    val inc = dayTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
+                                    val exp = dayTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+                                    BarChartItem(
+                                        id = "day_$day",
+                                        label = JalaliCalendarHelper.toPersianDigits(day),
+                                        fullTitle = "${JalaliCalendarHelper.toPersianDigits(day)} $monthName ${JalaliCalendarHelper.toPersianDigits(selectedDailyDate.year)}",
+                                        income = inc,
+                                        expense = exp,
+                                        isSelected = (day == selectedDailyDate.day),
+                                        onClick = { selectedDailyDate = JalaliDate(selectedDailyDate.year, selectedDailyDate.month, day) }
+                                    )
+                                }
+                            }
+                            "WEEKLY" -> {
+                                (6 downTo 0).map { weekIndex ->
+                                    val weekRefDate = JalaliCalendarHelper.addDays(selectedWeeklyEndDate, -weekIndex * 7)
+                                    val (wStart, wEnd) = JalaliCalendarHelper.getWeekRange(weekRefDate)
+                                    val startJdn = JalaliCalendarHelper.jalaliToJdn(wStart.year, wStart.month, wStart.day)
+                                    val endJdn = JalaliCalendarHelper.jalaliToJdn(wEnd.year, wEnd.month, wEnd.day)
+
+                                    val weekTxs = transactions.filter { tx ->
+                                        val parsed = JalaliCalendarHelper.parseJalaliDate(tx.jalaliDate)
+                                        if (parsed != null) {
+                                            val jdn = JalaliCalendarHelper.jalaliToJdn(parsed.year, parsed.month, parsed.day)
+                                            jdn in startJdn..endJdn &&
+                                            (selectedAccountId == null || tx.accountId == selectedAccountId) &&
+                                            (selectedCategoryId == null || tx.categoryId == selectedCategoryId || tx.subcategoryId == selectedCategoryId)
+                                        } else false
+                                    }
+                                    val inc = weekTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
+                                    val exp = weekTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+                                    val fullRangeTitle = "هفته از ${wStart.toReadablePersianString()} تا ${wEnd.toReadablePersianString()}"
+
+                                    BarChartItem(
+                                        id = "week_$weekIndex",
+                                        label = if (weekIndex == 0) "جاری" else JalaliCalendarHelper.toPersianDigits(7 - weekIndex),
+                                        fullTitle = fullRangeTitle,
+                                        income = inc,
+                                        expense = exp,
+                                        isSelected = (weekIndex == 0),
+                                        onClick = { selectedWeeklyEndDate = wEnd }
+                                    )
+                                }
+                            }
+                            "MONTH" -> {
+                                (1..12).map { month ->
+                                    val mPrefix = String.format(java.util.Locale.US, "%04d/%02d", selectedYearInt, month)
+                                    val monthTxs = transactions.filter { tx ->
+                                        tx.jalaliDate.startsWith(mPrefix) &&
+                                        (selectedAccountId == null || tx.accountId == selectedAccountId) &&
+                                        (selectedCategoryId == null || tx.categoryId == selectedCategoryId || tx.subcategoryId == selectedCategoryId)
+                                    }
+                                    val inc = monthTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
+                                    val exp = monthTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+                                    val mName = JalaliCalendarHelper.PERSIAN_MONTH_NAMES.getOrNull(month - 1) ?: ""
+
+                                    BarChartItem(
+                                        id = "month_$month",
+                                        label = mName.take(4),
+                                        fullTitle = "$mName ${JalaliCalendarHelper.toPersianDigits(selectedYearInt)}",
+                                        income = inc,
+                                        expense = exp,
+                                        isSelected = (month == selectedMonthInt),
+                                        onClick = { selectedMonthInt = month }
+                                    )
+                                }
+                            }
+                            "YEAR" -> {
+                                val txYears = transactions.mapNotNull { JalaliCalendarHelper.parseJalaliDate(it.jalaliDate)?.year }
+                                val minYr = (txYears.minOrNull() ?: selectedYearInt).coerceAtMost(selectedYearInt - 3)
+                                val maxYr = (txYears.maxOrNull() ?: selectedYearInt).coerceAtLeast(selectedYearInt + 1)
+
+                                (minYr..maxYr).map { yr ->
+                                    val yPrefix = String.format(java.util.Locale.US, "%04d/", yr)
+                                    val yearTxs = transactions.filter { tx ->
+                                        tx.jalaliDate.startsWith(yPrefix) &&
+                                        (selectedAccountId == null || tx.accountId == selectedAccountId) &&
+                                        (selectedCategoryId == null || tx.categoryId == selectedCategoryId || tx.subcategoryId == selectedCategoryId)
+                                    }
+                                    val inc = yearTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
+                                    val exp = yearTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+
+                                    BarChartItem(
+                                        id = "year_$yr",
+                                        label = JalaliCalendarHelper.toPersianDigits(yr),
+                                        fullTitle = "سال ${JalaliCalendarHelper.toPersianDigits(yr)}",
+                                        income = inc,
+                                        expense = exp,
+                                        isSelected = (yr == selectedYearInt),
+                                        onClick = { selectedYearInt = yr }
+                                    )
+                                }
+                            }
+                            else -> emptyList()
+                        }
+                    }
+
+                    PeriodComparisonBarChart(
+                        title = comparisonTitle,
+                        items = comparisonBars,
+                        currencyUnit = currencyUnit
+                    )
+                }
+            }
         }
     }
 
@@ -638,5 +774,212 @@ fun AnalyticsScreen(
                 showEndDatePicker = false
             }
         )
+    }
+}
+
+data class BarChartItem(
+    val id: String,
+    val label: String,
+    val fullTitle: String,
+    val income: Double,
+    val expense: Double,
+    val isSelected: Boolean,
+    val onClick: () -> Unit
+)
+
+@Composable
+fun PeriodComparisonBarChart(
+    title: String,
+    items: List<BarChartItem>,
+    currencyUnit: CurrencyUnit
+) {
+    var activeItem by remember(items) { mutableStateOf(items.firstOrNull { it.isSelected } ?: items.firstOrNull()) }
+
+    LaunchedEffect(items) {
+        val selected = items.firstOrNull { it.isSelected }
+        if (selected != null) {
+            activeItem = selected
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(IncomeGreen)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "درآمد",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(ExpenseRed)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "هزینه",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Active Item Details Summary Box
+            activeItem?.let { item ->
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = item.fullTitle,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                text = "درآمد: ${CurrencyHelper.formatAmount(item.income, currencyUnit)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = IncomeGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "هزینه: ${CurrencyHelper.formatAmount(item.expense, currencyUnit)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ExpenseRed,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
+            if (items.isEmpty()) {
+                Text(
+                    text = "اطلاعاتی برای نمایش وجود ندارد.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            } else {
+                val maxVal = items.maxOfOrNull { maxOf(it.income, it.expense) }?.coerceAtLeast(1.0) ?: 1.0
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    items.forEach { item ->
+                        val isItemActive = (activeItem?.id == item.id) || item.isSelected
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isItemActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                    else Color.Transparent
+                                )
+                                .clickable {
+                                    activeItem = item
+                                    item.onClick()
+                                }
+                                .padding(horizontal = 4.dp, vertical = 6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .height(120.dp)
+                                    .width(if (items.size > 15) 22.dp else 36.dp),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxHeight(),
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    val incFraction = (item.income / maxVal).toFloat().coerceIn(0f, 1f)
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight(incFraction.coerceAtLeast(if (item.income > 0) 0.05f else 0.01f))
+                                            .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                            .background(if (item.income > 0) IncomeGreen else IncomeGreen.copy(alpha = 0.15f))
+                                    )
+
+                                    val expFraction = (item.expense / maxVal).toFloat().coerceIn(0f, 1f)
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight(expFraction.coerceAtLeast(if (item.expense > 0) 0.05f else 0.01f))
+                                            .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                            .background(if (item.expense > 0) ExpenseRed else ExpenseRed.copy(alpha = 0.15f))
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = if (items.size > 20) 9.sp else 11.sp,
+                                fontWeight = if (isItemActive) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isItemActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
