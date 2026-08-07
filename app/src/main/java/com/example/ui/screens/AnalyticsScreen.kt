@@ -132,6 +132,91 @@ fun AnalyticsScreen(
         }
     }
 
+    val prevPeriodLabel = remember(dateFilterMode) {
+        when (dateFilterMode) {
+            "DAILY" -> "روز قبل"
+            "WEEKLY" -> "هفته قبل"
+            "MONTH" -> "ماه قبل"
+            "YEAR" -> "سال قبل"
+            "CUSTOM" -> "دوره قبل"
+            else -> null
+        }
+    }
+
+    val prevFilteredTransactions = remember(
+        transactions, dateFilterMode, selectedDailyDate, selectedWeeklyEndDate,
+        selectedYearInt, selectedMonthInt, startDateJalali, endDateJalali,
+        selectedAccountId, selectedCategoryId
+    ) {
+        if (dateFilterMode == "ALL") emptyList()
+        else {
+            transactions.filter { tx ->
+                val matchesDate = when (dateFilterMode) {
+                    "DAILY" -> {
+                        val prevDay = JalaliCalendarHelper.addDays(selectedDailyDate, -1)
+                        tx.jalaliDate == prevDay.toFormattedString()
+                    }
+                    "WEEKLY" -> {
+                        val parsed = JalaliCalendarHelper.parseJalaliDate(tx.jalaliDate)
+                        if (parsed != null) {
+                            val txJdn = JalaliCalendarHelper.jalaliToJdn(parsed.year, parsed.month, parsed.day)
+                            val prevWeeklyEnd = JalaliCalendarHelper.addDays(selectedWeeklyEndDate, -7)
+                            val (prevStart, prevEnd) = JalaliCalendarHelper.getWeekRange(prevWeeklyEnd)
+                            val startJdn = JalaliCalendarHelper.jalaliToJdn(prevStart.year, prevStart.month, prevStart.day)
+                            val endJdn = JalaliCalendarHelper.jalaliToJdn(prevEnd.year, prevEnd.month, prevEnd.day)
+                            txJdn in startJdn..endJdn
+                        } else false
+                    }
+                    "MONTH" -> {
+                        val (prevY, prevM) = if (selectedMonthInt == 1) {
+                            Pair(selectedYearInt - 1, 12)
+                        } else {
+                            Pair(selectedYearInt, selectedMonthInt - 1)
+                        }
+                        val mStr = String.format(java.util.Locale.US, "%04d/%02d", prevY, prevM)
+                        tx.jalaliDate.startsWith(mStr)
+                    }
+                    "YEAR" -> {
+                        val prevY = selectedYearInt - 1
+                        tx.jalaliDate.startsWith(prevY.toString())
+                    }
+                    "CUSTOM" -> {
+                        val startP = JalaliCalendarHelper.parseJalaliDate(startDateJalali)
+                        val endP = JalaliCalendarHelper.parseJalaliDate(endDateJalali)
+                        if (startP != null && endP != null) {
+                            val sJdn = JalaliCalendarHelper.jalaliToJdn(startP.year, startP.month, startP.day)
+                            val eJdn = JalaliCalendarHelper.jalaliToJdn(endP.year, endP.month, endP.day)
+                            val duration = eJdn - sJdn + 1
+                            if (duration > 0) {
+                                val prevSJdn = sJdn - duration
+                                val prevEJdn = sJdn - 1
+                                val parsed = JalaliCalendarHelper.parseJalaliDate(tx.jalaliDate)
+                                if (parsed != null) {
+                                    val txJdn = JalaliCalendarHelper.jalaliToJdn(parsed.year, parsed.month, parsed.day)
+                                    txJdn in prevSJdn..prevEJdn
+                                } else false
+                            } else false
+                        } else false
+                    }
+                    else -> false
+                }
+
+                val matchesAccount = (selectedAccountId == null || tx.accountId == selectedAccountId)
+                val matchesCategory = (selectedCategoryId == null || tx.categoryId == selectedCategoryId || tx.subcategoryId == selectedCategoryId)
+
+                matchesDate && matchesAccount && matchesCategory
+            }
+        }
+    }
+
+    val prevTotalIncome = remember(prevFilteredTransactions) {
+        prevFilteredTransactions.filter { it.type == "INCOME" }.sumOf { it.amount }
+    }
+
+    val prevTotalExpense = remember(prevFilteredTransactions) {
+        prevFilteredTransactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+    }
+
     val totalIncome = remember(filteredTransactions) {
         filteredTransactions.filter { it.type == "INCOME" }.sumOf { it.amount }
     }
@@ -462,7 +547,7 @@ fun AnalyticsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text("مجموع درآمد", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 Text(
                                     text = CurrencyHelper.formatAmount(totalIncome, currencyUnit),
@@ -470,9 +555,19 @@ fun AnalyticsScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = IncomeGreen
                                 )
+                                if (prevPeriodLabel != null) {
+                                    ChangePercentBadge(
+                                        current = totalIncome,
+                                        previous = prevTotalIncome,
+                                        isIncome = true,
+                                        periodName = prevPeriodLabel
+                                    )
+                                }
                             }
 
-                            Column(horizontalAlignment = Alignment.End) {
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                                 Text("مجموع هزینه", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 Text(
                                     text = CurrencyHelper.formatAmount(totalExpense, currencyUnit),
@@ -480,6 +575,14 @@ fun AnalyticsScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = ExpenseRed
                                 )
+                                if (prevPeriodLabel != null) {
+                                    ChangePercentBadge(
+                                        current = totalExpense,
+                                        previous = prevTotalExpense,
+                                        isIncome = false,
+                                        periodName = prevPeriodLabel
+                                    )
+                                }
                             }
                         }
 
@@ -982,4 +1085,87 @@ fun PeriodComparisonBarChart(
             }
         }
     }
+}
+
+@Composable
+fun ChangePercentBadge(
+    current: Double,
+    previous: Double,
+    isIncome: Boolean,
+    periodName: String
+) {
+    if (current == 0.0 && previous == 0.0) {
+        Text(
+            text = "بدون تغییر نسبت به $periodName",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+        return
+    }
+
+    val pct = if (previous > 0) {
+        ((current - previous) / previous) * 100.0
+    } else if (current > 0) {
+        100.0
+    } else {
+        -100.0
+    }
+
+    val isIncrease = pct > 0
+    val isZero = Math.abs(pct) < 0.05
+
+    val icon = if (isIncrease) Icons.Default.ArrowUpward else if (isZero) Icons.Default.Remove else Icons.Default.ArrowDownward
+
+    // Color logic:
+    // Income: increase is green, decrease is red
+    // Expense: increase is red (more spending), decrease is green (less spending)
+    val tintColor = if (isZero) Color.Gray else if (isIncome) {
+        if (isIncrease) IncomeGreen else ExpenseRed
+    } else {
+        if (isIncrease) ExpenseRed else IncomeGreen
+    }
+
+    val absPctStr = formatPercentValue(Math.abs(pct))
+    val textLabel = if (isZero) {
+        "بدون تغییر نسبت به $periodName"
+    } else {
+        val direction = if (isIncrease) "افزایش" else "کاهش"
+        "٪$absPctStr $direction نسبت به $periodName"
+    }
+
+    Surface(
+        color = tintColor.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.padding(top = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tintColor,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = textLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = tintColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
+private fun formatPercentValue(absVal: Double): String {
+    val formatted = if (absVal % 1.0 == 0.0) {
+        String.format(java.util.Locale.US, "%.0f", absVal)
+    } else {
+        String.format(java.util.Locale.US, "%.1f", absVal)
+    }
+    return JalaliCalendarHelper.toPersianDigits(formatted)
 }
