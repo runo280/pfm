@@ -43,6 +43,7 @@ sealed class BottomNavTab(
     val icon: ImageVector
 ) {
     object Dashboard : BottomNavTab("dashboard", "خانه", Icons.Default.Home)
+    object CalendarTab : BottomNavTab("calendar", "تقویم", Icons.Default.CalendarMonth)
     object Transactions : BottomNavTab("transactions", "تراکنش‌ها", Icons.Default.Receipt)
     object Accounts : BottomNavTab("accounts", "حساب‌ها", Icons.Default.CreditCard)
     object Installments : BottomNavTab("installments", "اقساط و چک", Icons.Default.Payments)
@@ -119,6 +120,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 ) {
                     val tabs = listOf(
                         BottomNavTab.Dashboard,
+                        BottomNavTab.CalendarTab,
                         BottomNavTab.Transactions,
                         BottomNavTab.Installments,
                         BottomNavTab.Analytics,
@@ -173,6 +175,17 @@ fun MainScreen(viewModel: MainViewModel) {
                             onTransfer = { fromId, toId, amt, fee, note ->
                                 viewModel.transferBetweenAccounts(fromId, toId, amt, fee, note)
                             }
+                        )
+                    }
+                    BottomNavTab.CalendarTab -> {
+                        CalendarScreen(
+                            transactions = transactions,
+                            installments = installments,
+                            cheques = cheques,
+                            debts = debts,
+                            categories = categories,
+                            accounts = accounts,
+                            currencyUnit = currencyUnit
                         )
                     }
                     BottomNavTab.Transactions -> {
