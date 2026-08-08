@@ -94,6 +94,10 @@ fun InstallmentsChequesScreen(
     var debtToEdit by remember { mutableStateOf<DebtEntity?>(null) }
     var debtToSettle by remember { mutableStateOf<DebtEntity?>(null) }
     var debtFilterTab by remember { mutableIntStateOf(filterPrefs.instDebtFilterTab) } // 0 = All, 1 = Receivable, 2 = Payable, 3 = Settled
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedPersonFolder by remember { mutableStateOf<String?>(null) }
+    var defaultPersonForAdd by remember { mutableStateOf<String?>(null) }
+    var folderItemFilterTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(selectedTab, debtFilterTab) {
         filterPrefs.instSelectedTab = selectedTab
@@ -727,339 +731,310 @@ fun InstallmentsChequesScreen(
                     }
                 }
             } else {
-                // Debts & Receivables Tab
-                val totalReceivable = debts.filter { it.type == "RECEIVABLE" && it.status == "PENDING" }.sumOf { it.amount - it.paidAmount }
-                val totalPayable = debts.filter { it.type == "PAYABLE" && it.status == "PENDING" }.sumOf { it.amount - it.paidAmount }
-                val netDebt = totalReceivable - totalPayable
-
-                val filteredDebts = debts.filter { debt ->
-                    when (debtFilterTab) {
-                        1 -> debt.type == "RECEIVABLE" && debt.status == "PENDING"
-                        2 -> debt.type == "PAYABLE" && debt.status == "PENDING"
-                        3 -> debt.status == "SETTLED"
-                        else -> true
-                    }
+                // Debts & Receivables Tab (Grouped by Person Folders)
+                val personFolders = remember(debts) {
+                    debts.groupBy { it.personName.trim().ifBlank { "بدون نام" } }
+                        .map { (name, items) ->
+                            val totalRec = items.filter { it.type == "RECEIVABLE" && it.status == "PENDING" }
+                                .sumOf { (it.amount - it.paidAmount).coerceAtLeast(0.0) }
+                            val totalPay = items.filter { it.type == "PAYABLE" && it.status == "PENDING" }
+                                .sumOf { (it.amount - it.paidAmount).coerceAtLeast(0.0) }
+                            val net = totalRec - totalPay
+                            val pendingCount = items.count { it.status == "PENDING" }
+                            val settledCount = items.count { it.status == "SETTLED" }
+                            PersonDebtFolder(
+                                personName = name,
+                                items = items.sortedByDescending { it.id },
+                                totalReceivable = totalRec,
+                                totalPayable = totalPay,
+                                netBalance = net,
+                                pendingCount = pendingCount,
+                                settledCount = settledCount
+                            )
+                        }
+                        .sortedWith(
+                            compareByDescending<PersonDebtFolder> { it.pendingCount > 0 }
+                                .thenByDescending { Math.abs(it.netBalance) }
+                                .thenBy { it.personName }
+                        )
                 }
 
+                val totalReceivableAll = debts.filter { it.type == "RECEIVABLE" && it.status == "PENDING" }.sumOf { (it.amount - it.paidAmount).coerceAtLeast(0.0) }
+                val totalPayableAll = debts.filter { it.type == "PAYABLE" && it.status == "PENDING" }.sumOf { (it.amount - it.paidAmount).coerceAtLeast(0.0) }
+                val netDebtAll = totalReceivableAll - totalPayableAll
+
                 Column(modifier = Modifier.weight(1f)) {
-                    // Summary Cards Header
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("طلبکاری شما", style = MaterialTheme.typography.bodySmall, color = IncomeGreen)
-                                Text(
-                                    CurrencyHelper.formatAmount(totalReceivable, currencyUnit),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = IncomeGreen
-                                )
-                            }
-                            VerticalDivider(modifier = Modifier.height(36.dp))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("بدهکاری شما", style = MaterialTheme.typography.bodySmall, color = ExpenseRed)
-                                Text(
-                                    CurrencyHelper.formatAmount(totalPayable, currencyUnit),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = ExpenseRed
-                                )
-                            }
-                            VerticalDivider(modifier = Modifier.height(36.dp))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("خالص مطالبات", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                Text(
-                                    CurrencyHelper.formatAmount(netDebt, currencyUnit),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (netDebt >= 0) IncomeGreen else ExpenseRed
-                                )
+                    if (selectedPersonFolder == null) {
+                        // Main Root View: Person Folders List
+                        val filteredPersonFolders = remember(personFolders, searchQuery, debtFilterTab) {
+                            personFolders.filter { folder ->
+                                val matchesSearch = searchQuery.isBlank() ||
+                                        folder.personName.contains(searchQuery, ignoreCase = true) ||
+                                        folder.items.any { it.note.contains(searchQuery, ignoreCase = true) }
+
+                                val matchesTab = when (debtFilterTab) {
+                                    1 -> folder.totalReceivable > 0 || folder.netBalance > 0
+                                    2 -> folder.totalPayable > 0 || folder.netBalance < 0
+                                    3 -> folder.pendingCount == 0
+                                    else -> true
+                                }
+
+                                matchesSearch && matchesTab
                             }
                         }
-                    }
 
-                    // Filter Chips Row
-                    ScrollableTabRow(
-                        selectedTabIndex = debtFilterTab,
-                        edgePadding = 0.dp,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        Tab(selected = debtFilterTab == 0, onClick = { debtFilterTab = 0 }, text = { Text("همه (${JalaliCalendarHelper.toPersianDigits(debts.size)})") })
-                        Tab(selected = debtFilterTab == 1, onClick = { debtFilterTab = 1 }, text = { Text("طلب‌ها") })
-                        Tab(selected = debtFilterTab == 2, onClick = { debtFilterTab = 2 }, text = { Text("بدهی‌ها") })
-                        Tab(selected = debtFilterTab == 3, onClick = { debtFilterTab = 3 }, text = { Text("تسویه‌شده") })
-                    }
-
-                    if (filteredDebts.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().weight(1f),
-                            contentAlignment = Alignment.Center
+                        // Summary Cards Header
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         ) {
-                            Text("هیچ مورد طلب یا بدهی وجود ندارد.", color = Color.Gray)
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("طلبکاری شما", style = MaterialTheme.typography.bodySmall, color = IncomeGreen)
+                                    Text(
+                                        CurrencyHelper.formatAmount(totalReceivableAll, currencyUnit),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = IncomeGreen
+                                    )
+                                }
+                                VerticalDivider(modifier = Modifier.height(36.dp))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("بدهکاری شما", style = MaterialTheme.typography.bodySmall, color = ExpenseRed)
+                                    Text(
+                                        CurrencyHelper.formatAmount(totalPayableAll, currencyUnit),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ExpenseRed
+                                    )
+                                }
+                                VerticalDivider(modifier = Modifier.height(36.dp))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("خالص مطالبات", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text(
+                                        CurrencyHelper.formatAmount(netDebtAll, currencyUnit),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (netDebtAll >= 0) IncomeGreen else ExpenseRed
+                                    )
+                                }
+                            }
+                        }
+
+                        // Search Field
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("جستجو در نام اشخاص یا یادداشت‌ها...") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                            trailingIcon = if (searchQuery.isNotEmpty()) {
+                                {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "پاکسازی")
+                                    }
+                                }
+                            } else null,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        // Filter Chips Row
+                        ScrollableTabRow(
+                            selectedTabIndex = debtFilterTab,
+                            edgePadding = 0.dp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        ) {
+                            Tab(selected = debtFilterTab == 0, onClick = { debtFilterTab = 0 }, text = { Text("همه اشخاص (${JalaliCalendarHelper.toPersianDigits(personFolders.size)})") })
+                            Tab(selected = debtFilterTab == 1, onClick = { debtFilterTab = 1 }, text = { Text("طلبکاران") })
+                            Tab(selected = debtFilterTab == 2, onClick = { debtFilterTab = 2 }, text = { Text("بدهکاران") })
+                            Tab(selected = debtFilterTab == 3, onClick = { debtFilterTab = 3 }, text = { Text("تسویه‌شده") })
+                        }
+
+                        if (filteredPersonFolders.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize().weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.FolderShared, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Gray)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("هیچ پوشه یا حساب شخصی ثبت نشده است.", color = Color.Gray)
+                                }
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 100.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filteredPersonFolders, key = { it.personName }) { folder ->
+                                    PersonFolderCard(
+                                        folder = folder,
+                                        currencyUnit = currencyUnit,
+                                        onClick = { selectedPersonFolder = folder.personName },
+                                        onAddDebtForPerson = {
+                                            defaultPersonForAdd = folder.personName
+                                            showAddDebtDialog = true
+                                        }
+                                    )
+                                }
+                            }
                         }
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 100.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(filteredDebts, key = { it.id }) { debt ->
-                                var showDeleteConfirm by remember { mutableStateOf(false) }
-                                var showResetConfirm by remember { mutableStateOf(false) }
-                                val isReceivable = debt.type == "RECEIVABLE"
-                                val remaining = (debt.amount - debt.paidAmount).coerceAtLeast(0.0)
-                                val progress = if (debt.amount > 0) (debt.paidAmount / debt.amount).toFloat().coerceIn(0f, 1f) else 1f
-
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (debt.status == "SETTLED") MaterialTheme.colorScheme.surface
-                                        else if (isReceivable) IncomeGreenContainer.copy(alpha = 0.3f)
-                                        else ExpenseRedContainer.copy(alpha = 0.3f)
-                                    )
-                                ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Surface(
-                                                    shape = CircleShape,
-                                                    color = if (isReceivable) IncomeGreen else ExpenseRed,
-                                                    modifier = Modifier.size(36.dp)
-                                                ) {
-                                                    Box(contentAlignment = Alignment.Center) {
-                                                        Icon(
-                                                            imageVector = if (isReceivable) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                                                            contentDescription = null,
-                                                            tint = Color.White
-                                                        )
-                                                    }
-                                                }
-                                                Spacer(modifier = Modifier.width(10.dp))
-                                                Column {
-                                                    Text(
-                                                        debt.personName,
-                                                        style = MaterialTheme.typography.titleMedium,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                    Text(
-                                                        if (isReceivable) "طلبکار هستید (از ${debt.personName})" else "بدهکار هستید (به ${debt.personName})",
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = if (isReceivable) IncomeGreen else ExpenseRed
-                                                    )
-                                                }
+                        // Inside Person Folder View
+                        val currentFolder = personFolders.firstOrNull { it.personName == selectedPersonFolder }
+                        if (currentFolder == null) {
+                            selectedPersonFolder = null
+                        } else {
+                            // Header Bar with Back Button
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            IconButton(onClick = { selectedPersonFolder = null }) {
+                                                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "بازگشت")
                                             }
-
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                if (debt.status == "SETTLED") {
-                                                    Surface(
-                                                        color = IncomeGreenContainer,
-                                                        shape = RoundedCornerShape(12.dp),
-                                                        modifier = Modifier.padding(end = 4.dp)
-                                                    ) {
-                                                        Text(
-                                                            "تسویه کامل",
-                                                            color = IncomeGreen,
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                                        )
-                                                    }
-                                                }
-                                                IconButton(onClick = { debtToEdit = debt }) {
-                                                    Icon(Icons.Default.Edit, contentDescription = "ویرایش", tint = MaterialTheme.colorScheme.primary)
-                                                }
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text("مبلغ کل:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                            Text(
-                                                CurrencyHelper.formatAmount(debt.amount, currencyUnit),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-
-                                        if (debt.paidAmount > 0) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("پرداخت/تسویه شده:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(Icons.Default.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Column {
                                                 Text(
-                                                    CurrencyHelper.formatAmount(debt.paidAmount, currencyUnit),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = IncomeGreen
-                                                )
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("باقیمانده:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                                Text(
-                                                    CurrencyHelper.formatAmount(remaining, currencyUnit),
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isReceivable) IncomeGreen else ExpenseRed
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            LinearProgressIndicator(
-                                                progress = { progress },
-                                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
-                                                color = if (isReceivable) IncomeGreen else ExpenseRed
-                                            )
-                                        }
-
-                                        if (debt.dueDateJalali.isNotBlank()) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                "تاریخ قرار/سررسید: ${JalaliCalendarHelper.toPersianDigits(debt.dueDateJalali)}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = Color.Gray
-                                            )
-                                        }
-
-                                        if (debt.note.isNotBlank()) {
-                                            Text(
-                                                "توضیحات: ${debt.note}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = Color.Gray
-                                            )
-                                        }
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            OutlinedButton(
-                                                onClick = { showDeleteConfirm = true },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .height(38.dp),
-                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
-                                            ) {
-                                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(15.dp))
-                                                Spacer(modifier = Modifier.width(3.dp))
-                                                Text(
-                                                    "حذف",
+                                                    text = "پوشه مطالبات و بدهی‌ها",
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = currentFolder.personName,
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                             }
+                                        }
 
-                                            if (debt.paidAmount > 0 || debt.status == "SETTLED") {
-                                                OutlinedButton(
-                                                    onClick = { showResetConfirm = true },
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .height(38.dp),
-                                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                                    shape = RoundedCornerShape(10.dp),
-                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                                                ) {
-                                                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
-                                                    Spacer(modifier = Modifier.width(3.dp))
-                                                    Text(
-                                                        "بازگرداندن",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                            }
+                                        Button(
+                                            onClick = {
+                                                defaultPersonForAdd = currentFolder.personName
+                                                showAddDebtDialog = true
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("ثبت مورد جدید", style = MaterialTheme.typography.labelMedium)
+                                        }
+                                    }
 
-                                            if (debt.status == "PENDING") {
-                                                Button(
-                                                    onClick = { debtToSettle = debt },
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .height(38.dp),
-                                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                                    shape = RoundedCornerShape(10.dp),
-                                                    colors = ButtonDefaults.buttonColors(
-                                                        containerColor = if (isReceivable) IncomeGreen else MaterialTheme.colorScheme.primary
-                                                    )
-                                                ) {
-                                                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(15.dp))
-                                                    Spacer(modifier = Modifier.width(3.dp))
-                                                    Text(
-                                                        if (isReceivable) "ثبت دریافت" else "ثبت پرداخت",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                            }
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text("طلبکاری از او:", style = MaterialTheme.typography.bodySmall, color = IncomeGreen)
+                                            Text(
+                                                CurrencyHelper.formatAmount(currentFolder.totalReceivable, currencyUnit),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = IncomeGreen
+                                            )
+                                        }
+                                        Column {
+                                            Text("بدهکاری به او:", style = MaterialTheme.typography.bodySmall, color = ExpenseRed)
+                                            Text(
+                                                CurrencyHelper.formatAmount(currentFolder.totalPayable, currencyUnit),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = ExpenseRed
+                                            )
+                                        }
+                                        Column {
+                                            Text("خالص وضعیت:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Text(
+                                                CurrencyHelper.formatAmount(currentFolder.netBalance, currencyUnit),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (currentFolder.netBalance >= 0) IncomeGreen else ExpenseRed
+                                            )
                                         }
                                     }
                                 }
+                            }
 
-                                if (showDeleteConfirm) {
-                                    AlertDialog(
-                                        onDismissRequest = { showDeleteConfirm = false },
-                                        title = { Text("حذف طلب/بدهی") },
-                                        text = { Text("آیا از حذف حساب با ${debt.personName} اطمینان دارید؟") },
-                                        confirmButton = {
-                                            Button(
-                                                onClick = {
-                                                    onDeleteDebt?.invoke(debt)
-                                                    showDeleteConfirm = false
-                                                },
-                                                colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
-                                            ) {
-                                                Text("حذف")
-                                            }
-                                        },
-                                        dismissButton = {
-                                            TextButton(onClick = { showDeleteConfirm = false }) {
-                                                Text("انصراف")
-                                            }
-                                        }
-                                    )
+                            // Filter Tabs Inside Folder
+                            ScrollableTabRow(
+                                selectedTabIndex = folderItemFilterTab,
+                                edgePadding = 0.dp,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            ) {
+                                Tab(
+                                    selected = folderItemFilterTab == 0,
+                                    onClick = { folderItemFilterTab = 0 },
+                                    text = { Text("همه موارد (${JalaliCalendarHelper.toPersianDigits(currentFolder.items.size)})") }
+                                )
+                                Tab(
+                                    selected = folderItemFilterTab == 1,
+                                    onClick = { folderItemFilterTab = 1 },
+                                    text = { Text("طلب‌ها") }
+                                )
+                                Tab(
+                                    selected = folderItemFilterTab == 2,
+                                    onClick = { folderItemFilterTab = 2 },
+                                    text = { Text("بدهی‌ها") }
+                                )
+                                Tab(
+                                    selected = folderItemFilterTab == 3,
+                                    onClick = { folderItemFilterTab = 3 },
+                                    text = { Text("تسویه‌شده") }
+                                )
+                            }
+
+                            val folderFilteredItems = remember(currentFolder, folderItemFilterTab) {
+                                currentFolder.items.filter { item ->
+                                    when (folderItemFilterTab) {
+                                        1 -> item.type == "RECEIVABLE" && item.status == "PENDING"
+                                        2 -> item.type == "PAYABLE" && item.status == "PENDING"
+                                        3 -> item.status == "SETTLED"
+                                        else -> true
+                                    }
                                 }
+                            }
 
-                                if (showResetConfirm) {
-                                    AlertDialog(
-                                        onDismissRequest = { showResetConfirm = false },
-                                        title = { Text("بازگرداندن به حالت عدم پرداخت") },
-                                        text = { Text("آیا از لغو پرداخت‌ها و بازگرداندن وضعیت بدهی/طلب با ${debt.personName} به حالت عدم پرداخت اطمینان دارید؟ تمامی مبالغ پرداختی صفر خواهند شد.") },
-                                        confirmButton = {
-                                            Button(
-                                                onClick = {
-                                                    onUpdateDebt?.invoke(debt.copy(paidAmount = 0.0, status = "PENDING"))
-                                                    showResetConfirm = false
-                                                }
-                                            ) {
-                                                Text("تأیید و بازگرداندن")
-                                            }
-                                        },
-                                        dismissButton = {
-                                            TextButton(onClick = { showResetConfirm = false }) {
-                                                Text("انصراف")
-                                            }
-                                        }
-                                    )
+                            if (folderFilteredItems.isEmpty()) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().weight(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("هیچ مورد مطالبات یا بدهی در این دسته‌بندی وجود ندارد.", color = Color.Gray)
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(bottom = 100.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(folderFilteredItems, key = { it.id }) { debt ->
+                                        DebtItemCard(
+                                            debt = debt,
+                                            currencyUnit = currencyUnit,
+                                            onEdit = { debtToEdit = debt },
+                                            onSettle = { debtToSettle = debt },
+                                            onDelete = { onDeleteDebt?.invoke(debt) },
+                                            onReset = { onUpdateDebt?.invoke(debt.copy(paidAmount = 0.0, status = "PENDING")) }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1188,11 +1163,16 @@ fun InstallmentsChequesScreen(
     if (showAddDebtDialog) {
         AddEditDebtDialog(
             debt = null,
+            initialPersonName = defaultPersonForAdd ?: "",
             currencyUnit = currencyUnit,
-            onDismiss = { showAddDebtDialog = false },
+            onDismiss = {
+                showAddDebtDialog = false
+                defaultPersonForAdd = null
+            },
             onSave = { newDebt ->
                 onAddDebt?.invoke(newDebt)
                 showAddDebtDialog = false
+                defaultPersonForAdd = null
             }
         )
     }
@@ -2646,11 +2626,12 @@ fun EditInstallmentItemDialog(
 @Composable
 fun AddEditDebtDialog(
     debt: DebtEntity?,
+    initialPersonName: String = "",
     currencyUnit: CurrencyUnit,
     onDismiss: () -> Unit,
     onSave: (DebtEntity) -> Unit
 ) {
-    var personName by remember { mutableStateOf(debt?.personName ?: "") }
+    var personName by remember { mutableStateOf(debt?.personName ?: initialPersonName) }
     var type by remember { mutableStateOf(debt?.type ?: "RECEIVABLE") }
     var amountValue by remember {
         mutableStateOf(
@@ -3578,6 +3559,418 @@ private fun LoanDetailItemRow(
             style = MaterialTheme.typography.bodySmall,
             fontWeight = if (isBold) FontWeight.Bold else FontWeight.SemiBold,
             color = color
+        )
+    }
+}
+
+data class PersonDebtFolder(
+    val personName: String,
+    val items: List<DebtEntity>,
+    val totalReceivable: Double,
+    val totalPayable: Double,
+    val netBalance: Double,
+    val pendingCount: Int,
+    val settledCount: Int
+)
+
+@Composable
+fun PersonFolderCard(
+    folder: PersonDebtFolder,
+    currencyUnit: CurrencyUnit,
+    onClick: () -> Unit,
+    onAddDebtForPerson: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.FolderShared,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = folder.personName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${JalaliCalendarHelper.toPersianDigits(folder.items.size)} مورد ثبت‌شده (${JalaliCalendarHelper.toPersianDigits(folder.pendingCount)} جاری)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                // Status Badge
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = when {
+                        folder.netBalance > 0 -> IncomeGreenContainer
+                        folder.netBalance < 0 -> ExpenseRedContainer
+                        folder.pendingCount == 0 -> MaterialTheme.colorScheme.surfaceVariant
+                        else -> MaterialTheme.colorScheme.primaryContainer
+                    }
+                ) {
+                    Text(
+                        text = when {
+                            folder.netBalance > 0 -> "طلبکار هستید"
+                            folder.netBalance < 0 -> "بدهکار هستید"
+                            folder.pendingCount == 0 -> "تسویه کامل"
+                            else -> "یر‌به‌یر"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            folder.netBalance > 0 -> IncomeGreen
+                            folder.netBalance < 0 -> ExpenseRed
+                            folder.pendingCount == 0 -> Color.Gray
+                            else -> MaterialTheme.colorScheme.primary
+                        },
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (folder.totalReceivable > 0) {
+                        Column {
+                            Text("طلب:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            Text(
+                                CurrencyHelper.formatAmount(folder.totalReceivable, currencyUnit),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = IncomeGreen
+                            )
+                        }
+                    }
+
+                    if (folder.totalPayable > 0) {
+                        Column {
+                            Text("بدهی:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            Text(
+                                CurrencyHelper.formatAmount(folder.totalPayable, currencyUnit),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = ExpenseRed
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text("خالص:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(
+                            CurrencyHelper.formatAmount(folder.netBalance, currencyUnit),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (folder.netBalance >= 0) IncomeGreen else ExpenseRed
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onAddDebtForPerson) {
+                        Icon(Icons.Default.AddCircleOutline, contentDescription = "افزودن مورد", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    TextButton(onClick = onClick) {
+                        Text("باز کردن پوشه", style = MaterialTheme.typography.labelMedium)
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DebtItemCard(
+    debt: DebtEntity,
+    currencyUnit: CurrencyUnit,
+    onEdit: () -> Unit,
+    onSettle: () -> Unit,
+    onDelete: () -> Unit,
+    onReset: () -> Unit
+) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showResetConfirm by remember { mutableStateOf(false) }
+    val isReceivable = debt.type == "RECEIVABLE"
+    val remaining = (debt.amount - debt.paidAmount).coerceAtLeast(0.0)
+    val progress = if (debt.amount > 0) (debt.paidAmount / debt.amount).toFloat().coerceIn(0f, 1f) else 1f
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (debt.status == "SETTLED") MaterialTheme.colorScheme.surface
+            else if (isReceivable) IncomeGreenContainer.copy(alpha = 0.3f)
+            else ExpenseRedContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isReceivable) IncomeGreen else ExpenseRed,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isReceivable) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            if (isReceivable) "طلب از ${debt.personName}" else "بدهی به ${debt.personName}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            if (debt.createdDateJalali.isNotBlank()) "ثبت: ${JalaliCalendarHelper.toPersianDigits(debt.createdDateJalali)}" else if (isReceivable) "طلبکار هستید" else "بدهکار هستید",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (debt.status == "SETTLED") {
+                        Surface(
+                            color = IncomeGreenContainer,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.padding(end = 4.dp)
+                        ) {
+                            Text(
+                                "تسویه کامل",
+                                color = IncomeGreen,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "ویرایش", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("مبلغ کل:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(
+                    CurrencyHelper.formatAmount(debt.amount, currencyUnit),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            if (debt.paidAmount > 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("پرداخت/تسویه شده:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        CurrencyHelper.formatAmount(debt.paidAmount, currencyUnit),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = IncomeGreen
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("باقیمانده:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        CurrencyHelper.formatAmount(remaining, currencyUnit),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isReceivable) IncomeGreen else ExpenseRed
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
+                    color = if (isReceivable) IncomeGreen else ExpenseRed
+                )
+            }
+
+            if (debt.dueDateJalali.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "تاریخ قرار/سررسید: ${JalaliCalendarHelper.toPersianDigits(debt.dueDateJalali)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+
+            if (debt.note.isNotBlank()) {
+                Text(
+                    "توضیحات: ${debt.note}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = { showDeleteConfirm = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        "حذف",
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                if (debt.paidAmount > 0 || debt.status == "SETTLED") {
+                    OutlinedButton(
+                        onClick = { showResetConfirm = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            "بازگرداندن",
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                if (debt.status == "PENDING") {
+                    Button(
+                        onClick = onSettle,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isReceivable) IncomeGreen else MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            if (isReceivable) "ثبت دریافت" else "ثبت پرداخت",
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("حذف طلب/بدهی") },
+            text = { Text("آیا از حذف این مورد حساب با ${debt.personName} اطمینان دارید؟") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
+                ) {
+                    Text("حذف")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("انصراف")
+                }
+            }
+        )
+    }
+
+    if (showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = { Text("بازگرداندن به حالت عدم پرداخت") },
+            text = { Text("آیا از لغو پرداخت‌ها و بازگرداندن وضعیت بدهی/طلب با ${debt.personName} به حالت عدم پرداخت اطمینان دارید؟ تمامی مبالغ پرداختی صفر خواهند شد.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onReset()
+                        showResetConfirm = false
+                    }
+                ) {
+                    Text("تأیید و بازگرداندن")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirm = false }) {
+                    Text("انصراف")
+                }
+            }
         )
     }
 }
