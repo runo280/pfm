@@ -55,6 +55,7 @@ fun InstallmentsChequesScreen(
     debts: List<DebtEntity> = emptyList(),
     accounts: List<AccountEntity>,
     currencyUnit: CurrencyUnit,
+    initialTab: Int = 0,
     onAddInstallment: (InstallmentEntity, List<Double>?) -> Unit,
     onUpdateInstallment: (InstallmentEntity) -> Unit,
     onDeleteInstallment: (InstallmentEntity) -> Unit,
@@ -77,7 +78,7 @@ fun InstallmentsChequesScreen(
     val context = LocalContext.current
     val filterPrefs = remember { FilterPreferences(context) }
 
-    var selectedTab by remember { mutableIntStateOf(filterPrefs.instSelectedTab) } // 0 = Installments, 1 = Cheques
+    var selectedTab by remember(initialTab) { mutableIntStateOf(if (initialTab in 0..2) initialTab else filterPrefs.instSelectedTab) } // 0 = Installments, 1 = Cheques, 2 = Debts
 
     var showAddInstallmentDialog by remember { mutableStateOf(false) }
     var installmentToEdit by remember { mutableStateOf<InstallmentEntity?>(null) }

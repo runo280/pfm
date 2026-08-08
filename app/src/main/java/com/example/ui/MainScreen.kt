@@ -48,7 +48,7 @@ sealed class BottomNavTab(
     object Accounts : BottomNavTab("accounts", "حساب‌ها", Icons.Default.CreditCard)
     object Installments : BottomNavTab("installments", "اقساط و چک", Icons.Default.Payments)
     object Analytics : BottomNavTab("analytics", "آمار", Icons.Default.PieChart)
-    object Settings : BottomNavTab("settings", "تنظیمات", Icons.Default.Settings)
+    object Settings : BottomNavTab("settings", "ابزارها", Icons.Default.Widgets)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,6 +78,7 @@ fun MainScreen(viewModel: MainViewModel) {
     val isAppUnlocked by viewModel.isAppUnlocked.collectAsState()
 
     var currentTab by remember { mutableStateOf<BottomNavTab>(BottomNavTab.Dashboard) }
+    var targetInstallmentTab by remember { mutableIntStateOf(0) }
 
     val currentJalali = remember { JalaliCalendarHelper.getCurrentJalaliDate() }
     val installmentsAndChequesBadgeCount = remember(installments, cheques, currentJalali) {
@@ -223,6 +224,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             debts = debts,
                             accounts = accounts,
                             currencyUnit = currencyUnit,
+                            initialTab = targetInstallmentTab,
                             onAddInstallment = { inst, customItems -> viewModel.addInstallment(inst, customItems) },
                             onUpdateInstallment = { viewModel.updateInstallment(it) },
                             onDeleteInstallment = { viewModel.deleteInstallment(it) },
@@ -254,7 +256,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         )
                     }
                     BottomNavTab.Settings -> {
-                        SettingsScreen(
+                        ToolsScreen(
                             currencyUnit = currencyUnit,
                             accounts = accounts,
                             categories = categories,
@@ -289,7 +291,13 @@ fun MainScreen(viewModel: MainViewModel) {
                             onShareBackupData = { viewModel.shareBackupJson(context) },
                             onRestoreData = { uri -> viewModel.importBackupJson(context, uri) },
                             onResetAndSeedMockData = { viewModel.resetAndSeedMockData() },
-                            onClearAllData = { viewModel.clearAllAppData() }
+                            onClearAllData = { viewModel.clearAllAppData() },
+                            onNavigateToTab = { tab, subTab ->
+                                currentTab = tab
+                                if (subTab != null) {
+                                    targetInstallmentTab = subTab
+                                }
+                            }
                         )
                     }
                 }
